@@ -1,6 +1,7 @@
 /* Public Tizen application APIs. No Mac server, network address or credentials. */
 (function () {
   'use strict';
+  function T(s) { return window.FrameI18n ? window.FrameI18n.t(s) : s; }
   var IDS = {
     stremio: 'IkWsFHtOY9.Stremio', netflix: 'org.tizen.netflix-app',
     disneyplus: 'MCmYXNxgcu.DisneyPlus', youtube: '9Ur5IzDKqV.TizenYouTube',
@@ -16,7 +17,10 @@
     'KaLitts8bq.tenplaySamsungTizen', 'eYuOiOLYQX.KayoSports', 'Ne2ZsPWdKl.9NOW',
     '3KA0pm7a7V.TubiTV', 'rJeHak5zRg.Spotify', 'icp4AvUPiA.7plus'];
   var CONSUMER_SYSTEM = ['org.tizen.browser', 'com.microsoft.copilot'];
-  var EXTRA_BRANDS = {'rJeHak5zRg.Spotify': 'spotify', '5b8c3eb16b.BeamCTVDev': 'hbomax', 'cj37Ni3qXM.HBONow': 'hbomax', '3KA0pm7a7V.TubiTV': 'tubi'};
+  var EXTRA_BRANDS = {'rJeHak5zRg.Spotify': 'spotify', '5b8c3eb16b.BeamCTVDev': 'hbomax', 'cj37Ni3qXM.HBONow': 'hbomax', '3KA0pm7a7V.TubiTV': 'tubi',
+    'OGLLvqej7u.CrunchyrollWebApp': 'crunchyroll', 'NRi6kdBYJ0.AirPlayWebApp': 'airplay', 'LnLzvqrcEY.globo': 'globoplay',
+    'GHI3a0zMSx.XboxGamePass': 'xbox', 'StrmisoTV1.Streamiso': 'streamiso', 'org.tizen.browser': 'internet',
+    'C9cMLuRno1.emanual': 'emanual', 'qtMHjALHus.TVDeviceCare': 'devicecare', 'nbCEREFaoy.mercadoplay': 'mercadoplay'};
   var INTERNAL = ['adplatform.ADPlayer', 'WykOS4t4F0.cmsWebApp', '25emanual3.emanual',
     'd0m1lV1nt2.emanual', '2022ePop01.SmartTV',
     'ZODRT12q2l.WebAccountExtension', 'ByJlgt0XeD.CastSettingsApp', 'tv6pbVMQFF.PrivacyChoices'];
@@ -27,19 +31,20 @@
     catch (err) { return SELF; }
   }
   function unavailable(done) {
-    done({ message: 'Open CleanFrame on the TV to use this control.', detail: 'The web preview cannot control the TV.' });
+    done({ message: T('Open the app on the TV to use this control.'), detail: T('The web preview cannot control the TV.') });
   }
   function failure(err) {
-    return { message: 'The TV could not open this screen.', detail: err && (err.message || err.name) || 'Try again, or press the remote’s Home button to return to CleanFrame.' };
+    return { message: T('The TV could not open this screen.'), detail: err && (err.message || err.name) || T('Try again, or press the remote’s Home button to return to the app.') };
   }
   function bounded(done, timeout) {
-    var finished = false, timer = setTimeout(function () { finish({ message: 'The TV did not respond. Please try again.' }); }, timeout || 8000);
+    var finished = false, timer = setTimeout(function () { finish({ message: T('The TV did not respond. Please try again.') }); }, timeout || 8000);
     function finish(err, value) { if (finished) return; finished = true; clearTimeout(timer); done(err, value); }
     return finish;
   }
   var sourceCancel = null;
   function cancelSource() { if (sourceCancel) sourceCancel(); }
-  function sources(done) {
+  // HDMI sources by default; withTv also lists the TV tuner source (Live TV) first.
+  function sources(done, withTv) {
     var sys = window.tizen && window.tizen.systeminfo, tvw = window.tizen && window.tizen.tvwindow;
     if (!sys || typeof sys.getPropertyValue !== 'function' || !tvw || typeof tvw.setSource !== 'function') { unavailable(done); return; }
     var finish = bounded(done);
@@ -48,53 +53,58 @@
         var list = [], byPort = {}, active = null;
         try { if (typeof tvw.getSource === 'function') active = tvw.getSource(); } catch (err) { /* Status may be unavailable while discovery still works. */ }
         function record(src, connected) {
-          if (!src || src.type !== 'HDMI' || typeof src.number !== 'number' || !isFinite(src.number) || src.number < 0 || Math.floor(src.number) !== src.number) return;
-          var key = String(src.number), item = byPort[key];
+          if (!src || !(src.type === 'HDMI' || (withTv && src.type === 'TV')) || typeof src.number !== 'number' || !isFinite(src.number) || src.number < 0 || Math.floor(src.number) !== src.number) return;
+          var key = src.type + src.number, item = byPort[key];
           if (!item) {
-            item = { number: src.number, name: 'HDMI ' + src.number, connected: false, active: !!(active && active.type === 'HDMI' && active.number === src.number), source: src };
+            item = { type: src.type, number: src.number, name: src.type === 'TV' ? 'TV' : 'HDMI ' + src.number, connected: false, active: !!(active && active.type === src.type && active.number === src.number), source: src };
             byPort[key] = item; list.push(item);
           }
           if (connected) { item.connected = true; item.source = src; }
         }
         if (video && Array.isArray(video.disconnected)) video.disconnected.forEach(function (src) { record(src, false); });
         if (video && Array.isArray(video.connected)) video.connected.forEach(function (src) { record(src, true); });
-        list.sort(function (a, b) { return a.number - b.number; });
+        list.sort(function (a, b) { return (a.type === 'TV' ? -1 : 0) - (b.type === 'TV' ? -1 : 0) || a.number - b.number; });
         finish(null, list);
       }, function (err) { finish(failure(err)); });
     } catch (err) { finish(failure(err)); }
   }
-  function setSource(port, done) {
+  function setSource(port, done, type) {
+    type = type === 'TV' ? 'TV' : 'HDMI';
     cancelSource();
     var tvw = window.tizen && window.tizen.tvwindow, app = api(), finished = false;
-    if (typeof port !== 'number' || !isFinite(port) || port < 0 || Math.floor(port) !== port) { done({ message: 'This HDMI input is not available.' }); return; }
+    if (typeof port !== 'number' || !isFinite(port) || port < 0 || Math.floor(port) !== port) { done({ message: T('This HDMI input is not available.') }); return; }
     if (!tvw || typeof tvw.setSource !== 'function' || !app || typeof app.launch !== 'function') { unavailable(done); return; }
-    var timer = setTimeout(function () { finish({ message: 'The TV did not respond. Please try again.' }); }, 8000);
+    var timer = setTimeout(function () { finish({ message: T('The TV did not respond. Please try again.') }); }, 8000);
     function finish(err, value) {
       if (finished) return;
       finished = true; clearTimeout(timer);
       if (sourceCancel === cancel) sourceCancel = null;
       done(err, value);
     }
-    function cancel() { finish({ message: 'Input change cancelled.', cancelled: true }); }
+    function cancel() { finish({ message: T('Input change cancelled.'), cancelled: true }); }
     sourceCancel = cancel;
     sources(function (err, list) {
       if (finished) return;
       if (err) { finish(err); return; }
       var input = null;
-      list.some(function (item) { if (item.number === port) { input = item; return true; } return false; });
-      if (!input) { finish({ message: 'This HDMI input is no longer available.' }); return; }
+      list.some(function (item) { if (item.type === type && item.number === port) { input = item; return true; } return false; });
+      if (!input) { finish({ message: T('This input is no longer available.') }); return; }
       try {
         tvw.setSource(input.source, function (selected) {
           if (finished) return;
-          if (selected && (selected.type !== 'HDMI' || selected.number !== port)) { finish({ message: 'The TV selected a different input. Please try again.' }); return; }
+          if (selected && (selected.type !== type || selected.number !== port)) { finish({ message: T('The TV selected a different input. Please try again.') }); return; }
           try {
             app.launch('org.tizen.tv-viewer', function () { finish(null, input); }, function () {
-              finish({ message: 'The input was selected, but the TV viewer could not open.', detail: 'Use the remote’s Source control to view the input.' });
+              finish({ message: T('The input was selected, but the TV viewer could not open.'), detail: T('Use the remote’s Source control to view the input.') });
             });
-          } catch (error) { finish({ message: 'The input was selected, but the TV viewer could not open.' }); }
+          } catch (error) { finish({ message: T('The input was selected, but the TV viewer could not open.') }); }
         }, function (error) { if (!finished) finish(failure(error)); });
       } catch (error) { finish(failure(error)); }
-    });
+    }, type === 'TV');
+  }
+  // True when an app is installed; system shortcuts are shown only if their app exists.
+  function hasApp(id) {
+    try { return !!(api() && api().getAppInfo(id)); } catch (err) { return false; }
   }
   function launchApp(id, done) {
     if (!api()) { unavailable(done); return; }
@@ -103,7 +113,7 @@
     catch (err) { finish(failure(err)); }
   }
   function launch(brand, done) {
-    if (!IDS[brand]) { done({message: 'This app has no launch target.'}); return; }
+    if (!IDS[brand]) { done({message: T('This app has no launch target.')}); return; }
     launchApp(IDS[brand], done);
   }
   function art(done) {
@@ -116,7 +126,8 @@
     } catch (err) { finish(failure(err)); }
   }
   function home(done) { launchApp('com.samsung.tv.csfs', done); }
-  function settings(done) { launchApp('com.samsung.tv.coba.setting', done); }
+  // Tizen 5.5 TVs ignore launches of coba.setting from web apps; org.tizen.menu opens the same settings.
+  function settings(done) { launchApp(hasApp('org.tizen.menu') ? 'org.tizen.menu' : 'com.samsung.tv.coba.setting', done); }
   function apps(done) {
     if (!api()) { unavailable(done); return; }
     // Large installed catalogues can take longer than a launch response.
@@ -139,5 +150,5 @@
       }, function (err) { finish(failure(err)); });
     } catch (err) { finish(failure(err)); }
   }
-  window.FrameDevice = { launch: launch, launchApp: launchApp, art: art, home: home, settings: settings, apps: apps, sources: sources, setSource: setSource, cancelSource: cancelSource };
+  window.FrameDevice = { hasApp: hasApp, launch: launch, launchApp: launchApp, art: art, home: home, settings: settings, apps: apps, sources: sources, setSource: setSource, cancelSource: cancelSource };
 }());

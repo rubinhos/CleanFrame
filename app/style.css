@@ -299,7 +299,11 @@ html,body{width:100%;height:100%;overflow:hidden;background:#000}
 .f-type .sheet .sc.is-lifted .panel-content,.f-type .sheet .er.is-lifted .panel-content{transform:none}
 
 /* Settings overview: each group carries one short, committed summary. */
-.settings-overview{position:absolute;left:112px;top:212px;width:1056px}
+.settings-overview{position:absolute;left:112px;top:212px;width:1056px;height:720px;overflow:hidden}
+.settings-overview.more-after{-webkit-mask-image:linear-gradient(to bottom,#000 calc(100% - 72px),transparent);mask-image:linear-gradient(to bottom,#000 calc(100% - 72px),transparent)}
+.settings-overview.more-before.more-after{-webkit-mask-image:linear-gradient(to bottom,transparent,#000 72px,#000 calc(100% - 72px),transparent);mask-image:linear-gradient(to bottom,transparent,#000 72px,#000 calc(100% - 72px),transparent)}
+.settings-overview.more-before:not(.more-after){-webkit-mask-image:linear-gradient(to bottom,transparent,#000 72px);mask-image:linear-gradient(to bottom,transparent,#000 72px)}
+.settings-scroll{transition:transform var(--t) var(--ease)}
 .settings-group{width:100%;height:112px;padding:12px 32px 12px 28px;border-radius:20px;display:flex;align-items:center;justify-content:space-between;color:var(--ink);transition:background-color 140ms linear,color 140ms linear}
 .settings-group+.settings-group{margin-top:8px}
 .settings-group-copy{min-width:0;display:flex;flex-direction:column}
@@ -315,7 +319,7 @@ html,body{width:100%;height:100%;overflow:hidden;background:#000}
 /* B: two-zone Home editor */
 .z-home,.z-other{top:216px}
 .z-other{left:1068px}
-.ed-home{position:absolute;left:112px;top:264px;width:880px;height:752px}
+.ed-home{position:absolute;left:112px;top:264px;width:880px;height:752px;overflow:hidden}
 .er{position:absolute;left:0;top:0;width:880px;height:72px;display:flex;transition:transform var(--t) var(--ease)}
 .er-name{flex:1;min-width:0;display:flex;align-items:center;padding:0 24px 0 16px;border-radius:24px;font-size:34px;font-weight:500;letter-spacing:-.5px;white-space:nowrap;transition:background-color 140ms linear}
 .er-num{width:36px;text-align:right;font-size:28px;color:var(--mute);font-variant-numeric:tabular-nums}
@@ -633,3 +637,56 @@ html,body{width:100%;height:100%;overflow:hidden;background:#000}
 .l-list .quiet-utils.is-text .u-content>*+*{margin-left:0;margin-right:0}
 .quiet-utils.is-text .u-content>*+*{margin-left:0}
 .l-list .quiet-utils.is-text .u .u-content>*+*{margin-right:0}
+/* TV inputs dock under the app grid (Dock layout only). */
+.inputs-dock.is-off,.l-list .inputs-dock{display:none}
+.tile.k-input .in-ico{position:absolute;left:24px;top:28px;width:40px;height:40px;opacity:.84;transition:opacity 160ms linear}
+.tile.k-input .in-ico .ico{width:40px;height:40px;stroke-width:1.6}
+.tile.k-input .in-name{position:absolute;left:84px;right:16px;top:12px;font-size:28px;line-height:40px;font-weight:500;letter-spacing:-.4px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;opacity:.84;transition:opacity 160ms linear}
+.tile.k-input .in-state{position:absolute;left:84px;right:16px;top:50px;font-size:22px;line-height:28px;white-space:nowrap;opacity:.6}
+.tile.k-input.is-focus .in-ico,.tile.k-input.is-focus .in-name{opacity:1}
+.tile.k-input.is-unplugged .in-ico,.tile.k-input.is-unplugged .in-name{opacity:.5}
+/* Weather: caption line, night veil and lightweight effects (transform/opacity only). */
+.wx-line{display:flex;align-items:center;font-size:28px;line-height:40px;margin-top:2px}
+.wx-line .ico{width:32px;height:32px;margin-right:10px;stroke-width:1.7}
+.wx-line .wx-temp{font-weight:600;margin-right:12px}
+.wx-line .wx-desc{opacity:.8;overflow:hidden;text-overflow:ellipsis}
+.wx-night-veil{position:absolute;left:0;top:0;width:1920px;height:1080px;background:rgba(6,12,34,.5);opacity:0;transition:opacity 2.5s linear;pointer-events:none}
+.mat .wx-night-veil{width:auto;height:auto;right:0;bottom:0}
+.bg-photo.wx-night .wx-night-veil{opacity:1}
+.wx{position:absolute;left:0;top:0;width:1920px;height:1080px;overflow:hidden;pointer-events:none}
+.is-sheet .wx,.wx-paused .wx{display:none}
+.wx-rain-wrap{position:absolute;left:-200px;top:-420px;width:2320px;height:1760px;transform:rotate(9deg)}
+.wx-rain{position:absolute;left:0;top:0;width:100%;height:100%;opacity:.5;will-change:transform;animation:wx-fall .55s linear infinite;
+  background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='240' height='320'%3E%3Cg stroke='white' stroke-width='1.6' stroke-linecap='round' stroke-opacity='.6'%3E%3Cpath d='M20 10v34M70 90v30M130 30v38M190 140v32M40 190v36M110 230v30M170 262v36M225 60v30M95 150v26M150 290v22'/%3E%3C/g%3E%3C/svg%3E");background-size:240px 320px}
+@keyframes wx-fall{from{transform:translate3d(0,0,0)}to{transform:translate3d(0,320px,0)}}
+.wx-snow-wrap{position:absolute;left:-120px;top:-360px;width:2160px;height:1440px;animation:wx-sway 5s ease-in-out infinite alternate}
+.wx-snow{position:absolute;left:0;top:0;width:100%;height:100%;opacity:.75;will-change:transform;animation:wx-fall 7s linear infinite;
+  background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='240' height='320'%3E%3Cg fill='white'%3E%3Ccircle cx='20' cy='30' r='3'/%3E%3Ccircle cx='90' cy='110' r='2.2'/%3E%3Ccircle cx='160' cy='50' r='3.4'/%3E%3Ccircle cx='210' cy='180' r='2.4'/%3E%3Ccircle cx='50' cy='230' r='2.8'/%3E%3Ccircle cx='130' cy='270' r='2'/%3E%3Ccircle cx='190' cy='300' r='3'/%3E%3C/g%3E%3C/svg%3E");background-size:240px 320px}
+@keyframes wx-sway{from{transform:translate3d(-40px,0,0)}to{transform:translate3d(40px,0,0)}}
+.wx-flash{position:absolute;left:0;top:0;width:100%;height:100%;background:#e8eeff;opacity:0;animation:wx-flash 11s linear infinite}
+@keyframes wx-flash{0%,58%{opacity:0}59%{opacity:.32}60%{opacity:.04}61.5%{opacity:.24}64%,100%{opacity:0}}
+.wx-sun{position:absolute;left:1180px;top:-420px;width:1000px;height:1000px;border-radius:50%;background:radial-gradient(circle,rgba(255,238,196,.5),rgba(255,224,160,.16) 42%,rgba(255,224,160,0) 70%);will-change:transform,opacity;animation:wx-glow 8s ease-in-out infinite alternate}
+.wx-sun.is-soft{opacity:.55;animation:none}
+@keyframes wx-glow{from{opacity:.6;transform:scale(.95)}to{opacity:1;transform:scale(1.05)}}
+.wx-stars{position:absolute;left:0;top:0;width:1920px;height:560px;opacity:.7;will-change:opacity;animation:wx-twinkle 4s ease-in-out infinite alternate;
+  background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='320' height='280'%3E%3Cg fill='white'%3E%3Ccircle cx='30' cy='40' r='1.4'/%3E%3Ccircle cx='120' cy='18' r='1'/%3E%3Ccircle cx='210' cy='70' r='1.6'/%3E%3Ccircle cx='290' cy='30' r='1'/%3E%3Ccircle cx='70' cy='150' r='1.2'/%3E%3Ccircle cx='170' cy='190' r='1'/%3E%3Ccircle cx='260' cy='230' r='1.4'/%3E%3C/g%3E%3C/svg%3E");background-size:320px 280px}
+@keyframes wx-twinkle{from{opacity:.45}to{opacity:.85}}
+.wx-fog{position:absolute;left:-200px;top:300px;width:2320px;height:780px;background:linear-gradient(to bottom,rgba(214,220,226,0),rgba(214,220,226,.26) 45%,rgba(214,220,226,.36));will-change:transform,opacity;animation:wx-drift 14s ease-in-out infinite alternate}
+@keyframes wx-drift{from{transform:translate3d(-60px,0,0);opacity:.7}to{transform:translate3d(60px,0,0);opacity:1}}
+.wx-leaf{position:absolute;top:-80px;width:44px;height:44px;will-change:transform;animation-name:wx-leaf-fall;animation-timing-function:linear;animation-iteration-count:infinite}
+.wx-leaf-i{width:44px;height:44px;background-size:44px 44px;animation:wx-leaf-sway 2.8s ease-in-out infinite alternate}
+.wx-leaf-a{background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 40 40'%3E%3Cpath d='M6 34C6 16 18 6 36 5c0 18-11 30-30 29Z' fill='%23d9822b'/%3E%3Cpath d='M8 32L30 11' stroke='%23a2541a' stroke-width='1.4' fill='none'/%3E%3C/svg%3E")}
+.wx-leaf-b{background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 40 40'%3E%3Cpath d='M6 34C6 16 18 6 36 5c0 18-11 30-30 29Z' fill='%23b5482a'/%3E%3Cpath d='M8 32L30 11' stroke='%237a2a14' stroke-width='1.4' fill='none'/%3E%3C/svg%3E")}
+@keyframes wx-leaf-fall{from{transform:translate3d(0,0,0)}to{transform:translate3d(-160px,1200px,0)}}
+@keyframes wx-leaf-sway{from{transform:translate3d(-30px,0,0) rotate(-35deg)}to{transform:translate3d(30px,0,0) rotate(40deg)}}
+/* Input device icons (picked presets) rendered as a monochrome mask. */
+.dev-mark{display:block;background:currentColor;-webkit-mask-size:contain;mask-size:contain;-webkit-mask-repeat:no-repeat;mask-repeat:no-repeat;-webkit-mask-position:center;mask-position:center}
+.dev-mark-img{object-fit:contain}
+.tile.k-input .in-ico .dev-mark,.tile.k-input .in-ico .dev-mark-img{opacity:.9}
+.tile.k-input.is-focus .in-ico .dev-mark,.tile.k-input.is-focus .in-ico .dev-mark-img{opacity:1}
+.setting-choice .dev-mark,.setting-choice .dev-mark-img{flex:none;margin-right:20px;color:var(--ink)}
+.setting-devicon-line{width:44px;height:44px;flex:none;margin-right:20px;stroke-width:1.6}
+/* Long appearance option lists scroll (e.g. input icons). */
+.appearance-rows:not(.wallpaper-picker){height:696px;overflow:hidden}
+.appearance-scroll{transition:transform var(--t) var(--ease)}
+.appearance-rows.is-scrollable{-webkit-mask-image:linear-gradient(to bottom,#000 calc(100% - 64px),transparent);mask-image:linear-gradient(to bottom,#000 calc(100% - 64px),transparent)}

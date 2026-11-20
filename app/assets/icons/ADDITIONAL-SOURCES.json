@@ -16,5 +16,77 @@
     "source": "https://github.com/simple-icons/simple-icons/blob/develop/icons/tubi.svg",
     "licence": "CC0-1.0",
     "note": "Shape unchanged; white fill for launcher."
+  },
+  {
+    "icon": "crunchyroll",
+    "source": "https://raw.githubusercontent.com/simple-icons/simple-icons/16.36.0/icons/crunchyroll.svg",
+    "licence": "CC0-1.0",
+    "note": "Shape unchanged; white fill for launcher."
+  },
+  {
+    "icon": "airplay",
+    "source": "https://raw.githubusercontent.com/simple-icons/simple-icons/16.36.0/icons/airplayvideo.svg",
+    "licence": "CC0-1.0",
+    "note": "Shape unchanged; white fill for launcher."
+  },
+  {
+    "icon": "globoplay",
+    "source": "https://raw.githubusercontent.com/elax46/custom-brand-icons/a53cabf49bf439023a8f33585af30d783bffe51b/icon-svg/globoplay.svg",
+    "licence": "MIT",
+    "note": "Wordmark shape unchanged; recoloured white."
+  },
+  {
+    "icon": "xbox",
+    "source": "https://raw.githubusercontent.com/elax46/custom-brand-icons/a53cabf49bf439023a8f33585af30d783bffe51b/icon-svg/xbox.svg",
+    "licence": "MIT",
+    "note": "Shape unchanged; recoloured white."
+  },
+  {
+    "icon": "streamiso",
+    "source": "Owner-supplied StreamISO logo (local streamiso-tizen app/img/logo.svg)",
+    "licence": "Owner's own mark",
+    "note": "Symbol only (ring, play, signal arcs); wordmark and metadata removed; recoloured white."
+  },
+  {
+    "icon": "internet",
+    "source": "CleanFrame original generic outline (globe)",
+    "licence": "MIT",
+    "note": "Generic glyph, not a brand mark."
+  },
+  {
+    "icon": "emanual",
+    "source": "CleanFrame original generic outline (open book)",
+    "licence": "MIT",
+    "note": "Generic glyph, not a brand mark."
+  },
+  {
+    "icon": "devicecare",
+    "source": "CleanFrame original generic outline (shield and check)",
+    "licence": "MIT",
+    "note": "Generic glyph, not a brand mark."
+  },
+  {
+    "icon": "mercadoplay",
+    "source": "CleanFrame original generic outline (screen and play)",
+    "licence": "MIT",
+    "note": "Generic glyph; no freely licensed Mercado Play mark was found."
+  },
+  {
+    "icon": "dev-playstation",
+    "source": "https://raw.githubusercontent.com/simple-icons/simple-icons/16.36.0/icons/playstation.svg",
+    "licence": "CC0-1.0",
+    "note": "Input-device mark; shape unchanged, white fill."
+  },
+  {
+    "icon": "dev-xbox",
+    "source": "Reuses app/assets/icons/xbox.svg (Custom Brand Icons, MIT)",
+    "licence": "MIT",
+    "note": "Input-device mark; unchanged copy."
+  },
+  {
+    "icon": "dev-switch / dev-bluray / dev-dvd / dev-vcr / dev-cable / dev-pc / dev-soundbar / dev-streaming",
+    "source": "CleanFrame original device glyphs",
+    "licence": "MIT",
+    "note": "Original monochrome silhouettes for input device icons."
   }
 ]
