@@ -1052,7 +1052,7 @@
   function mode() { for (var i = 0; i < MODES.length; i++) if (MODES[i].id === S.c.mode) return MODES[i]; return MODES[0]; }
   function settingsRows() {
     var n = S.c.home.length;
-    return [{ id: 'background', label: T('Background'), value: S.c.bg === 'photo' ? wall(S.c.wall).name : VALUE_NAMES[S.c.bg] },
+    return [{ id: 'background', label: T('Background'), value: S.c.bg === 'photo' ? T(wall(S.c.wall).name) : VALUE_NAMES[S.c.bg] },
       { id: 'layout', label: T('Layout'), value: VALUE_NAMES[S.c.layout] },
       { id: 'typography', label: T('Typography'), value: FONTS[S.c.font].name },
       { id: 'focus', label: T('Focus'), value: VALUE_NAMES[S.c.focus] + (materialApplies() ? ', ' + VALUE_NAMES[S.c.material] : '') },
@@ -1109,11 +1109,7 @@
   }
   function choice(axis, value, disabled) {
     return { action: axis === 'mode' ? 'rotation.' + value : 'choice.' + axis + '.' + value, axis: axis, value: value, disabled: !!disabled,
-      label: axis === 'font' ? FONTS[value].name : axis === 'mode' ? MODES.filter(function (m) { return m.id === value; })[0].name : value === 'both' ? 'Both' : VALUE_NAMES[value] };
-  }
-  function choice(axis, value, disabled) {
-    return { action: axis === 'mode' ? 'rotation.' + value : 'choice.' + axis + '.' + value, axis: axis, value: value, disabled: !!disabled,
-      label: axis === 'font' ? FONTS[value].name : axis === 'mode' ? MODES.filter(function (m) { return m.id === value; })[0].name : value === 'both' ? 'Both' : VALUE_NAMES[value] };
+      label: axis === 'font' ? FONTS[value].name : axis === 'mode' ? MODES.filter(function (m) { return m.id === value; })[0].name : value === 'both' ? T('Both') : VALUE_NAMES[value] };
   }
   function detailSections(t) {
     var flat = S.c.bg !== 'photo', inactive = !materialApplies();
@@ -1124,7 +1120,7 @@
       reason: t.inputError || (!t.loading && !t.inputs.length ? T('No HDMI inputs were reported by this TV.') : '') }];
     if (t.group === 'background') return [
       { id: 'bg', title: T('Background type'), items: options('bg', ['photo', 'light', 'dark']) },
-      { id: 'wall', title: T('Wallpaper'), items: [{ action: 'background.wallpaper', label: wall(S.c.wall).name, thumbnail: true, disabled: flat }] },
+      { id: 'wall', title: T('Wallpaper'), items: [{ action: 'background.wallpaper', label: T(wall(S.c.wall).name), thumbnail: true, disabled: flat }] },
       { id: 'rotation', title: T('Rotation'), items: [{ action: 'background.rotation', label: mode().name, disabled: flat }], reason: flat ? T('Choose Photo to use wallpaper and rotation.') : '' }
     ];
     if (t.group === 'weather') return [{ id: 'wfx', title: '', horizontal: true, items: options('wfx', ['on', 'off']),
@@ -1723,7 +1719,7 @@
       var applied = typeof item.applied === 'boolean' ? item.applied : (item.axis && S.c[item.axis] === item.value);
       var loading = !!(item.axis && S.pending && S.pending.target[item.axis] === item.value && S.pending.row === item.axis);
       return '<button type="button" tabindex="-1" class="setting-choice' + (cls ? ' ' + cls : '') + (t.f.action === item.action ? ' is-focus' : '') + (item.disabled ? ' is-disabled' : '') + (applied ? ' is-applied' : '') + (loading ? ' is-loading' : '') + '"'
-        + (item.axis ? ' role="radio" aria-checked="' + !!applied + '"' : '') + ' aria-label="' + esc(item.axis && item.value === 'both' ? 'Icons and text' : item.label) + '" aria-disabled="' + !!item.disabled + '" aria-busy="' + loading + '"'
+        + (item.axis ? ' role="radio" aria-checked="' + !!applied + '"' : '') + ' aria-label="' + esc(item.axis && item.value === 'both' ? T('Icons and text') : item.label) + '" aria-disabled="' + !!item.disabled + '" aria-busy="' + loading + '"'
         + ' data-z="detail" data-i="0" data-id="' + item.action + '" data-action="' + item.action + '">' + inner
         + (item.axis ? '<span class="setting-tick" aria-hidden="true">' + (applied ? icon('check') : '') + '</span>' : '') + '</button>';
     }
@@ -1766,10 +1762,10 @@
     var rows = appearanceRows.querySelector('.wallpaper-rows'), shown = wall(S.wallShown) || wall(S.c.wall), candidate = WALLS[t.i], status, note, hint;
     keyed(rows, WALLS.map(function (w) { return { key: w.id, wall: w }; }), function (row, item, i) {
       var visible = i >= t.top && i < t.top + WALL_VISIBLE, w = item.wall, image;
-      setContent(row, w.id + '|' + visible, function () { return '<span class="wallpaper-thumb">' + (visible ? '<img src="' + WP + w.id + '-thumb.jpg" alt="">' : '') + '</span><span class="setting-copy"><span class="setting-name">' + esc(w.name) + '</span></span><span class="setting-tick" aria-hidden="true"></span>'; });
+      setContent(row, w.id + '|' + visible, function () { return '<span class="wallpaper-thumb">' + (visible ? '<img src="' + WP + w.id + '-thumb.jpg" alt="">' : '') + '</span><span class="setting-copy"><span class="setting-name">' + esc(T(w.name)) + '</span></span><span class="setting-tick" aria-hidden="true"></span>'; });
       row.className = 'setting-choice wallpaper-choice' + (t.f.zone === 'photo' && t.i === i ? ' is-focus' : '') + (w.id === S.c.wall ? ' is-applied' : '');
       row.style.transform = 'translate3d(0,' + (i * WALL_ROW) + 'px,0)'; row.style.visibility = visible ? 'visible' : 'hidden';
-      row.setAttribute('role', 'radio'); row.setAttribute('tabindex', '-1'); row.setAttribute('aria-label', w.name);
+      row.setAttribute('role', 'radio'); row.setAttribute('tabindex', '-1'); row.setAttribute('aria-label', T(w.name));
       row.setAttribute('aria-checked', String(w.id === S.c.wall)); row.setAttribute('aria-posinset', String(i + 1)); row.setAttribute('aria-setsize', String(WALLS.length));
       row.setAttribute('aria-busy', String(t.previewDue === w.id || S.wallPending === w.id));
       attrs(row, 'wall-choice', i, 'wallpaper.choose.' + w.id);
@@ -1784,9 +1780,9 @@
     rows.style.transform = 'translate3d(0,' + (-t.top * WALL_ROW) + 'px,0)';
     appearanceRows.querySelector('.wallpaper-before').className = 'wallpaper-edge wallpaper-before' + (t.top > 0 ? ' is-on' : '');
     appearanceRows.querySelector('.wallpaper-after').className = 'wallpaper-edge wallpaper-after' + (t.top + WALL_VISIBLE < WALLS.length ? ' is-on' : '');
-    note = t.previewDue ? T('Preparing {name}…', { name: candidate.name }) : S.wallPending ? (t.applyPending ? T('Applying {name}…', { name: candidate.name }) : T('Loading {name}…', { name: candidate.name })) : shown.id === S.c.wall ? T('Applied') : T('Preview');
-    if (t.failedId) note = S.err ? T('Couldn’t save {name}.', { name: wall(t.failedId).name }) : T('Couldn’t load {name}.', { name: wall(t.failedId).name });
-    status = '<p class="wallpaper-preview-name"><span>' + esc(shown.name) + '</span><span class="wallpaper-count">' + T('{n} of {cap}', { n: wallIndex(shown.id) + 1, cap: WALLS.length }) + '</span></p><p class="wallpaper-preview-state' + (t.failedId ? ' setting-error' : '') + '">' + esc(note) + '</p>';
+    note = t.previewDue ? T('Preparing {name}…', { name: T(candidate.name) }) : S.wallPending ? (t.applyPending ? T('Applying {name}…', { name: T(candidate.name) }) : T('Loading {name}…', { name: T(candidate.name) })) : shown.id === S.c.wall ? T('Applied') : T('Preview');
+    if (t.failedId) note = S.err ? T('Couldn’t save {name}.', { name: T(wall(t.failedId).name) }) : T('Couldn’t load {name}.', { name: T(wall(t.failedId).name) });
+    status = '<p class="wallpaper-preview-name"><span>' + esc(T(shown.name)) + '</span><span class="wallpaper-count">' + T('{n} of {cap}', { n: wallIndex(shown.id) + 1, cap: WALLS.length }) + '</span></p><p class="wallpaper-preview-state' + (t.failedId ? ' setting-error' : '') + '">' + esc(note) + '</p>';
     if (t.failedId) status += '<button type="button" tabindex="-1" class="setting-choice setting-retry' + (t.f.zone === 'retry' ? ' is-focus' : '') + '" data-z="wall-retry" data-action="wallpaper.retry">' + T('Try again') + '</button>';
     setHTML(appearanceStatus, status);
     hint = t.f.zone === 'back' ? T('Return to {name}', { name: T('Background') }) : t.f.zone === 'retry' ? T('Retry this photo') : T('Apply selected photo');
