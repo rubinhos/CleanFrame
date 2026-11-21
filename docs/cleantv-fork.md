@@ -105,6 +105,18 @@ identidade de `.local/signing.json` no momento do empacotamento. Não edite o id
   nem mostrar o tuner por trás via `tvwindow.show`. Não reintroduzir sem um teste isolado
   (sem gravar preferência) e sem um caminho de recuperação.
 
+### 3.2.3 Botão Home → CleanTV por TPK — testado e removido (2026-11-21)
+- Tentativa: TPK .NET separado (identidade própria, assinado com o mesmo perfil), com a
+  mesma regra `app-context-rule` `XF86Home` (`override="true"`) → CleanTV do
+  `router_manifest()` de `scripts/native-home/frame-2020/prepare.py`. Compilado em Docker
+  (`mcr.microsoft.com/dotnet/sdk:8.0.404`, `netcoreapp3.0`); TPK montado como zip e
+  assinado com `tizen package -t tpk -s <perfil> -- <arquivo.tpk>` (o CLI recusa pasta solta).
+- Na UN58TU7020: o pacote instala (o certificado aceita `appmanager.launch`) e
+  `sdb uninstall <pkgid>` remove, mas o botão Home físico **continua abrindo a Home da
+  Samsung**, mesmo após reinício completo. Roteador desinstalado.
+- Conclusão: neste modelo não há caminho por app (web ou TPK com certificado comum) para
+  o botão Home abrir o CleanTV. O acesso continua pela lista de apps.
+
 ### 3.3 Controles do topo
 - `utils()` retorna `['home', 'tv', 'apps', 'settings']` (sem `art` nesta TV).
 - `tv` → `FrameDevice.settings()`: usa `org.tizen.menu` quando instalado porque, no
