@@ -645,6 +645,20 @@ html,body{width:100%;height:100%;overflow:hidden;background:#000}
 .tile.k-input .in-state{position:absolute;left:84px;right:16px;top:50px;font-size:22px;line-height:28px;white-space:nowrap;opacity:.6}
 .tile.k-input.is-focus .in-ico,.tile.k-input.is-focus .in-name{opacity:1}
 .tile.k-input.is-unplugged .in-ico,.tile.k-input.is-unplugged .in-name{opacity:.5}
+/* Saved channels: one column right of the app grid (Dock layout only), vertical scroll. */
+.ch-dock.is-off,.l-list .ch-dock{display:none}
+.ch-dock.is-idle{opacity:.5}
+.ch-dock .shelf.fade-b{-webkit-mask-image:linear-gradient(to bottom,#000 calc(100% - 72px),rgba(0,0,0,.15));mask-image:linear-gradient(to bottom,#000 calc(100% - 72px),rgba(0,0,0,.15))}
+.ch-dock .shelf.fade-t{-webkit-mask-image:linear-gradient(to top,#000 calc(100% - 72px),rgba(0,0,0,.15));mask-image:linear-gradient(to top,#000 calc(100% - 72px),rgba(0,0,0,.15))}
+.ch-dock .shelf.fade-t.fade-b{-webkit-mask-image:linear-gradient(to bottom,rgba(0,0,0,.15),#000 72px,#000 calc(100% - 72px),rgba(0,0,0,.15));mask-image:linear-gradient(to bottom,rgba(0,0,0,.15),#000 72px,#000 calc(100% - 72px),rgba(0,0,0,.15))}
+.ch-dock .track{width:100%}
+.ch-dock .plate{border-radius:24px}
+.tile.k-ch{border-radius:24px}
+.tile.k-ch .mark{left:52px;top:14px}
+.tile.k-ch .ch-num-big{position:absolute;left:0;right:0;top:12px;text-align:center;font-size:34px;line-height:44px;font-weight:600;letter-spacing:-.6px;opacity:.84}
+.tile.k-ch .ch-label{position:absolute;left:8px;right:8px;top:62px;text-align:center;font-size:24px;line-height:32px;font-weight:500;letter-spacing:-.3px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;opacity:.84;transition:opacity 160ms linear}
+.tile.k-ch .ch-num{font-weight:400;opacity:.7}
+.tile.k-ch.is-focus .ch-label,.tile.k-ch.is-focus .ch-num-big{opacity:1}
 /* Weather: caption line, night veil and lightweight effects (transform/opacity only). */
 .wx-line{display:flex;align-items:center;font-size:28px;line-height:40px;margin-top:2px}
 .wx-line .ico{width:32px;height:32px;margin-right:10px;stroke-width:1.7}

@@ -12,6 +12,16 @@
   var CAP = 64, SCRIM_Y = 560, DOCK_COLS = 5, DOCK_ROWS = 2, DOCK_ROW_GAP = 16;
   // HDMI inputs dock below the app grid: tile size, dock height and gap above it.
   var IN_TW = 336, IN_TH = 96, IN_PITCH = 344, IN_H = IN_TH + 32, IN_GAP = 24;
+  // Saved antenna channels: one column to the right of the app grid, scrolling vertically.
+  var CH_TW = 168, CH_TH = 104, CH_PITCH = 112, CH_W = CH_TW + 32, CH_GAP = 24;
+  var CHANNELS = (Array.isArray(window.CleanTVChannels) ? window.CleanTVChannels : []).filter(function (c) {
+    return c && typeof c.major === 'number' && isFinite(c.major) && c.major >= 0 && typeof c.name === 'string' && c.name;
+  }).slice(0, 64).map(function (c) {
+    var minor = typeof c.minor === 'number' && isFinite(c.minor) && c.minor > 0 ? c.minor : 0;
+    return { key: 'ch' + c.major + '.' + minor, major: c.major, minor: minor, name: c.name.slice(0, 40),
+      num: typeof c.num === 'string' && c.num ? c.num.slice(0, 8) : c.major + (minor ? '.' + minor : ''),
+      icon: typeof c.icon === 'string' && /^[a-z0-9-]{1,40}$/.test(c.icon) ? c.icon : '' };
+  });
   var DOCK_MODES = { both: { tw: 288, th: 200, pitch: 296 }, text: { tw: 288, th: 104, pitch: 296 }, icons: { tw: 176, th: 144, pitch: 184 } };
   var GRID_ROW = 240, GRID_COL = 344, COLS = 5;
   var ED_ROW = 80, ED_SEP = 56, ED_VIEW = 752;
@@ -97,7 +107,7 @@
     wallShown: null, wallPending: null, wallError: null,
     shown: null, pending: null, lookError: null, bundleKey: null, previewBundle: null, reflow: false, fontSwitch: false
   };
-  var scroll = { first: 0, off: 0, photo: 0, photoArrange: 0 };
+  var scroll = { first: 0, off: 0, photo: 0, photoArrange: 0, ch: 0 };
   function pick(v, list, fallback) {
     v = String(v || '').toLowerCase();
     for (var i = 0; i < list.length; i++) if (list[i].toLowerCase() === v) return list[i];
@@ -576,6 +586,10 @@
       else FrameDevice.setSource(item.number, function (err) { done(err); refreshHomeInputs(); }, item.type);
     });
   }
+  function tuneChannel(ch) {
+    if (!ch) return;
+    perform(ch.name, function (done) { FrameDevice.tuneChannel(ch, done); });
+  }
   /* ---------- Weather caption and effects ---------- */
   // WMO weather codes (Open-Meteo) grouped into the effects this TV can afford.
   function wxInfo(code) {
@@ -759,9 +773,22 @@
         f.u = clamp(f.u, 0, U.length - 1);
         if (k === x.prev && f.u > 0) f.u--;
         else if (k === x.next && f.u < U.length - 1) f.u++;
-        else if (k === x.inn || k === 'back') f.zone = 'apps';
+        else if (k === x.inn || k === 'back') { f.zone = f.uf === 'channels' && CHANNELS.length ? 'channels' : 'apps'; f.uf = null; }
         else if (k === 'ok') { S.lastUtil = f.u; utilAction(U[f.u]); return; }
         S.lastUtil = f.u;
+        return;
+      }
+      f.uf = null;
+      if (f.zone === 'channels') {
+        // Channel column: Up/Down choose (Up from the first reaches the controls),
+        // OK tunes, Left or Back returns to the selected app.
+        var cn = CHANNELS.length;
+        if (!cn) { f.zone = 'apps'; return; }
+        f.c = clamp(f.c || 0, 0, cn - 1);
+        if (k === 'up') { if (f.c > 0) f.c--; else { f.zone = 'util'; f.uf = 'channels'; f.u = clamp(S.lastUtil, 0, U.length - 1); } }
+        else if (k === 'down') { if (f.c < cn - 1) f.c++; }
+        else if (k === 'left' || k === 'back') f.zone = 'apps';
+        else if (k === 'ok') tuneChannel(CHANNELS[f.c]);
         return;
       }
       if (f.zone === 'inputs') {
@@ -778,19 +805,23 @@
       f.zone = 'apps';
       var cols = dockGeom(h.length).cols, col = i % cols;
       function toInputs() { if (S.inputs.length) { f.zone = 'inputs'; f.n = clamp(f.n || 0, 0, S.inputs.length - 1); } }
+      function toChannels() { if (CHANNELS.length) { f.zone = 'channels'; f.c = clamp(f.c || 0, 0, CHANNELS.length - 1); } }
       if (k === 'back') openMessage('leave');
-      else if (!h.length) { if (k === 'up') { f.zone = 'util'; f.u = clamp(S.lastUtil, 0, U.length - 1); } else if (k === 'down') toInputs(); else if (k === 'ok') addAppsRoute(); }
+      else if (!h.length) { if (k === 'up') { f.zone = 'util'; f.u = clamp(S.lastUtil, 0, U.length - 1); } else if (k === 'down') toInputs(); else if (k === 'right') toChannels(); else if (k === 'ok') addAppsRoute(); }
       // Grid: Up/Down move between rows; Up from the first row reaches the controls,
       // Down from the last row reaches the inputs dock.
       else if (k === 'up') { if (i >= cols) setSel(h[i - cols]); else { f.zone = 'util'; f.u = clamp(S.lastUtil, 0, U.length - 1); } }
       else if (k === 'down') { if (Math.floor(i / cols) < Math.floor((h.length - 1) / cols)) setSel(h[Math.min(i + cols, h.length - 1)]); else toInputs(); }
       else if (k === 'left' && col > 0) setSel(h[i - 1]);
       else if (k === 'right' && col < cols - 1 && i < h.length - 1) setSel(h[i + 1]);
+      // Right from the last app of a row reaches the channel column.
+      else if (k === 'right') toChannels();
       else if (k === 'ok') launch(S.sel);
     },
     point: function (t, z, i) {
       if (z === 'util') { t.f.zone = 'util'; t.f.u = i; S.lastUtil = i; }
       else if (z === 'app') { t.f.zone = 'apps'; setSel(S.c.home[i]); }
+      else if (z === 'channel') { t.f.zone = 'channels'; t.f.c = i; }
       else if (z === 'input') { t.f.zone = 'inputs'; t.f.n = i; }
       else if (z === 'empty') t.f.zone = 'apps';
       else return;
@@ -1288,6 +1319,7 @@
   var utilFocusLabel = $('utilFocusLabel'), utilFocusKey = '', appFocusName = $('appFocusName');
   var wxEl = $('wx');
   var inDock = $('inDock'), inShelf = $('inShelf'), inTrack = $('inTrack'), inPlate = $('inPlate'), matScrim2 = $('matScrim2');
+  var chDock = $('chDock'), chShelf = $('chShelf'), chTrack = $('chTrack'), chPlate = $('chPlate'), matScrim3 = $('matScrim3');
   var dock = $('dock'), shelf = $('shelf'), track = $('track'), plate = $('plate'), matScrim = $('matScrim'), dockEmpty = $('dockEmpty');
   var cueL = $('cueL'), cueR = $('cueR'), dockAction = $('dockAction');
   var focusStatus = $('focusStatus'), sceneEl = $('scene'), appearanceEl = $('appearance'), appearanceRows = $('appearanceRows'), appearanceDesc = $('appearanceDesc');
@@ -1297,7 +1329,7 @@
   var utPlates = [$('utLens'), $('utLensAlt')], utFields = [$('utField'), $('utFieldAlt')], utPlateIndex = 0, utPlateKey = null;
   var photoMode = null, photoTransitionToken = 0;
   var sheetEl = $('sheet'), sheetView = $('sheetView');
-  var IMG = { photo: $('photo'), mat: $('matImg'), mat2: $('matImg2'), bg: $('sheetBg'), field: $('phFieldImg'), fieldAlt: $('phFieldImgAlt'), utility: $('utFieldImg'), utilityAlt: $('utFieldImgAlt') };
+  var IMG = { photo: $('photo'), mat: $('matImg'), mat2: $('matImg2'), mat3: $('matImg3'), bg: $('sheetBg'), field: $('phFieldImg'), fieldAlt: $('phFieldImgAlt'), utility: $('utFieldImg'), utilityAlt: $('utFieldImgAlt') };
   var sheetKey = '', slotEls = {}, dockAnchorCenter = 960;
   var appliedPalette = null, appliedPhoto = null, appliedFont = null, appliedFontMetrics = null;
 
@@ -1355,7 +1387,7 @@
   function homeState(t) {
     var h = S.c.home, hs = { mode: 'browse', zone: null, i: Math.max(0, ensureSel()), u: -1, lifted: false, from: -1, arr: null, items: h.map(function (id) { return { key: id, kind: 'app', id: id }; }) };
     if (isSettingsDetail(t)) hs.zone = 'preview';
-    else if (t.id === 'home') { hs.zone = t.f.zone; hs.u = t.f.u; hs.n = t.f.n || 0; }
+    else if (t.id === 'home') { hs.zone = t.f.zone; hs.u = t.f.u; hs.n = t.f.n || 0; hs.c = t.f.c || 0; }
     return hs;
   }
 
@@ -1469,7 +1501,9 @@
     var rows = Math.min(DOCK_ROWS, total), rp = m.th + DOCK_ROW_GAP, shelfW = cols * m.pitch - 8, w = shelfW + 32, h = rows * rp - DOCK_ROW_GAP + 32;
     var bottom = 908 - (S.inputs.length ? IN_H + IN_GAP : 0);
     if (n < 0) { w = 912; shelfW = 880; rows = total = 1; h = m.th + 32; }
-    return { x: Math.round((1920 - w) / 2), y: bottom - h, h: h, w: w, shelf: shelfW, cols: cols, rows: rows, total: total, rp: rp, vis: cols, broad: false, empty: n < 0, tw: m.tw, th: m.th, pitch: m.pitch };
+    // The channel column sits to the right; the pair is centred together.
+    var side = CHANNELS.length ? CH_GAP + CH_W : 0;
+    return { x: Math.round((1920 - w - side) / 2), y: bottom - h, h: h, w: w, shelf: shelfW, cols: cols, rows: rows, total: total, rp: rp, vis: cols, broad: false, empty: n < 0, tw: m.tw, th: m.th, pitch: m.pitch };
   }
   /* Returns the vertical offset: the window moves one row when focus passes an edge. */
   function dockOffset(n, i, g) {
@@ -1511,6 +1545,40 @@
     inPlate.className = 'plate' + (focus ? ' on-focus' : '');
     inPlate.style.transform = 'translate3d(' + (at * IN_PITCH) + 'px,0,0)';
   }
+  /* Channel column: same glass as the grid, its height, one tile per row; the track
+     scrolls a tile at a time so the focused channel stays in view. */
+  function renderChannels(hs, g) {
+    var n = CHANNELS.length, focus = hs.zone === 'channels', at = clamp(hs.c || 0, 0, Math.max(0, n - 1));
+    var x, y, h, vis, first;
+    if (!n) { chDock.className = 'dock ch-dock is-off'; return; }
+    x = g.x + g.w + CH_GAP; y = g.y; h = g.h;
+    vis = Math.max(1, Math.floor((h - 32 + 8) / CH_PITCH));
+    first = clamp(scroll.ch, 0, Math.max(0, n - vis));
+    if (at < first) first = at;
+    if (at > first + vis - 1) first = at - vis + 1;
+    scroll.ch = first;
+    chDock.className = 'dock ch-dock' + (hs.mode === 'arrange' ? ' is-idle' : '');
+    chDock.style.left = x + 'px'; chDock.style.top = y + 'px'; chDock.style.width = CH_W + 'px'; chDock.style.height = h + 'px';
+    chDock.style.setProperty('--tile-w', CH_TW + 'px'); chDock.style.setProperty('--tile-h', CH_TH + 'px'); chDock.style.setProperty('--dock-h', h + 'px');
+    chShelf.className = 'shelf' + (first > 0 ? ' fade-t' : '') + (first + vis < n ? ' fade-b' : '');
+    chShelf.style.width = CH_TW + 'px';
+    chTrack.style.transform = 'translate3d(0,' + (-first * CH_PITCH) + 'px,0)';
+    IMG.mat3.style.left = (-x) + 'px'; IMG.mat3.style.top = (-y) + 'px';
+    IMG.mat3.style.transformOrigin = '960px ' + (y + h / 2) + 'px';
+    matScrim3.style.left = (-x) + 'px'; matScrim3.style.top = (SCRIM_Y - y) + 'px';
+    keyed(chTrack, CHANNELS, function (el, ch, i) {
+      setContent(el, ch.key + '|' + ch.icon + '|' + ch.name, function () {
+        return '<span class="tile-content">' + (ch.icon ? markHtml(ch.icon, 64, 40, 40) : '<span class="ch-num-big">' + esc(ch.num) + '</span>')
+          + '<span class="ch-label"><span class="ch-num">' + esc(ch.num) + '</span> ' + esc(ch.name) + '</span></span>';
+      });
+      el.className = 'tile k-ch' + (focus && i === at ? ' is-focus' : '');
+      el.style.transform = 'translate3d(0,' + (i * CH_PITCH) + 'px,0)';
+      el.setAttribute('role', 'button'); el.setAttribute('aria-label', T('Channel {n}', { n: ch.num }) + ', ' + ch.name);
+      attrs(el, 'channel', i, 'home.channel.' + ch.key);
+    });
+    chPlate.className = 'plate' + (focus ? ' on-focus' : '');
+    chPlate.style.transform = 'translate3d(0,' + (at * CH_PITCH) + 'px,0)';
+  }
   function renderDock(hs) {
     var items = hs.items, n = items.length, empty = hs.mode !== 'arrange' && !n, g = dockGeom(empty ? -1 : n);
     var anchor = clamp(hs.i, 0, Math.max(0, n - 1)), off = empty ? 0 : dockOffset(n, anchor, g);
@@ -1520,6 +1588,7 @@
     var tileFocus = hs.zone === 'apps' || hs.zone === 'tiles', tileSel = hs.zone === 'act' || hs.zone === 'ctl' || hs.zone === 'preview';
     var focusItem = items[anchor], s, ax, label, width;
     renderInputs(hs);
+    renderChannels(hs, g);
 
     dock.className = 'dock' + (empty ? ' is-empty' : '');
     dock.style.left = g.x + 'px'; dock.style.top = g.y + 'px'; dock.style.width = g.w + 'px'; dock.style.height = g.h + 'px';
@@ -1986,6 +2055,7 @@
     var imgs = { photo: makeImg('photo', WP + look.wall + '.jpg'), bg: makeImg('sheet-bg', WP + look.wall + '-panel.jpg') }, keys, left, allOk = true;
     imgs.mat = makeImg('mat-img', matSrc(look.wall, look.material));
     imgs.mat2 = makeImg('mat-img', matSrc(look.wall, look.material));
+    imgs.mat3 = makeImg('mat-img', matSrc(look.wall, look.material));
     imgs.field = makeImg('ph-field-img', fieldSrc(look.wall, look.material));
     imgs.fieldAlt = makeImg('ph-field-img', fieldSrc(look.wall, look.material));
     imgs.utility = makeImg('ph-field-img', fieldSrc(look.wall, look.material));

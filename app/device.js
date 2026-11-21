@@ -102,6 +102,65 @@
       } catch (error) { finish(failure(error)); }
     }, type === 'TV');
   }
+  /* Saved antenna channel: make the tuner the active source, find major.minor in the TV's
+     channel list (so analog and digital numbering match the scan), tune it, then open the
+     TV viewer. Needs the tv.channel privilege. No signal still opens the viewer. */
+  function tuneChannel(ch, done) {
+    var tvc = window.tizen && window.tizen.tvchannel, tvw = window.tizen && window.tizen.tvwindow, app = api(), finished = false;
+    if (!ch || typeof ch.major !== 'number' || !isFinite(ch.major)) { done({ message: T('This channel is not available.') }); return; }
+    if (!tvc || typeof tvc.tune !== 'function' || !app || typeof app.launch !== 'function') { unavailable(done); return; }
+    cancelSource();
+    var timer = setTimeout(function () { finish({ message: T('The TV did not respond. Please try again.') }); }, 12000);
+    function finish(err, value) {
+      if (finished) return;
+      finished = true; clearTimeout(timer);
+      if (sourceCancel === cancel) sourceCancel = null;
+      done(err, value);
+    }
+    function cancel() { finish({ message: T('Channel change cancelled.'), cancelled: true }); }
+    sourceCancel = cancel;
+    function view() {
+      try {
+        app.launch('org.tizen.tv-viewer', function () { finish(null, ch); }, function () {
+          finish({ message: T('The channel was tuned, but the TV viewer could not open.'), detail: T('Use the remote’s Source control to view the input.') });
+        });
+      } catch (error) { finish({ message: T('The channel was tuned, but the TV viewer could not open.') }); }
+    }
+    function tune(major, minor) {
+      if (finished) return;
+      try {
+        tvc.tune({ major: major, minor: minor }, {
+          onsuccess: function () { if (!finished) view(); },
+          onnosignal: function () { if (!finished) view(); },
+          onprograminforeceived: function () {}
+        }, function (error) { if (!finished) finish(failure(error)); });
+      } catch (error) { finish(failure(error)); }
+    }
+    function lookup() {
+      if (finished) return;
+      if (typeof tvc.getChannelList !== 'function') { tune(ch.major, ch.minor || 0); return; }
+      try {
+        tvc.getChannelList(function (list) {
+          var hit = null;
+          if (finished) return;
+          (list || []).some(function (c) {
+            if (c && c.major === ch.major && (c.minor === ch.minor || (!ch.minor && !(c.minor > 0)))) { hit = c; return true; }
+            return false;
+          });
+          if (!hit) { finish({ message: T('Channel {n} was not found.', { n: ch.num || String(ch.major) }), detail: T('Run a channel scan in the TV settings, then try again.') }); return; }
+          tune(hit.major, hit.minor);
+        }, function () { tune(ch.major, ch.minor || 0); }, 'ALL', 0, 1000);
+      } catch (error) { tune(ch.major, ch.minor || 0); }
+    }
+    if (!tvw || typeof tvw.setSource !== 'function') { lookup(); return; }
+    sources(function (err, list) {
+      var tv = null;
+      if (finished) return;
+      if (!err && list) list.some(function (s) { if (s.type === 'TV') { tv = s; return true; } return false; });
+      if (!tv) { lookup(); return; }
+      try { tvw.setSource(tv.source, function () { lookup(); }, function () { lookup(); }); } catch (error) { lookup(); }
+    }, true);
+  }
   // True when an app is installed; system shortcuts are shown only if their app exists.
   function hasApp(id) {
     try { return !!(api() && api().getAppInfo(id)); } catch (err) { return false; }
@@ -150,5 +209,5 @@
       }, function (err) { finish(failure(err)); });
     } catch (err) { finish(failure(err)); }
   }
-  window.FrameDevice = { hasApp: hasApp, launch: launch, launchApp: launchApp, art: art, home: home, settings: settings, apps: apps, sources: sources, setSource: setSource, cancelSource: cancelSource };
+  window.FrameDevice = { hasApp: hasApp, launch: launch, launchApp: launchApp, art: art, home: home, settings: settings, apps: apps, sources: sources, setSource: setSource, cancelSource: cancelSource, tuneChannel: tuneChannel };
 }());

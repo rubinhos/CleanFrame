@@ -88,5 +88,29 @@
     "source": "CleanFrame original device glyphs",
     "licence": "MIT",
     "note": "Original monochrome silhouettes for input device icons."
+  },
+  {
+    "icon": "globo",
+    "source": "https://raw.githubusercontent.com/elax46/custom-brand-icons/a53cabf49bf439023a8f33585af30d783bffe51b/icon-svg/rede_globo.svg",
+    "licence": "MIT",
+    "note": "Channel mark (TV Globo); shape unchanged, recoloured white."
+  },
+  {
+    "icon": "band",
+    "source": "https://raw.githubusercontent.com/elax46/custom-brand-icons/a53cabf49bf439023a8f33585af30d783bffe51b/icon-svg/rede_bandeirantes.svg",
+    "licence": "MIT",
+    "note": "Channel mark (Band); shape unchanged, recoloured white."
+  },
+  {
+    "icon": "sbt",
+    "source": "https://commons.wikimedia.org/wiki/File:SBT_(1995).svg",
+    "licence": "CC-BY-4.0",
+    "note": "Channel mark (SBT). Circle and letter outlines merged into one white even-odd path so the letters are cut out; gradients and highlight layers removed. Attribution: Wikimedia Commons contributors, File:SBT (1995).svg."
+  },
+  {
+    "icon": "record",
+    "source": "https://commons.wikimedia.org/wiki/File:Recordtv2016.svg",
+    "licence": "CC-BY-SA-4.0",
+    "note": "Channel mark (Record TV). The sphere (without the wordmark) was rasterised to 256px and its luminance converted to a white alpha mask, embedded as PNG in SVG; this adaptation is shared under CC BY-SA 4.0. Attribution: Wikimedia Commons contributors, File:Recordtv2016.svg."
   }
 ]

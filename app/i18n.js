@@ -96,6 +96,12 @@
     'The input was selected, but the TV viewer could not open.': 'A entrada foi selecionada, mas o visualizador da TV não abriu.',
     'Use the remote’s Source control to view the input.': 'Use o botão Source do controle para ver a entrada.',
     'This app has no launch target.': 'Este app não tem destino de abertura.',
+    'This channel is not available.': 'Este canal não está disponível.',
+    'Channel change cancelled.': 'Troca de canal cancelada.',
+    'The channel was tuned, but the TV viewer could not open.': 'O canal foi sintonizado, mas o visualizador da TV não abriu.',
+    'Channel {n} was not found.': 'O canal {n} não foi encontrado.',
+    'Run a channel scan in the TV settings, then try again.': 'Faça uma busca de canais nas configurações da TV e tente de novo.',
+    'Channels': 'Canais', 'Channel {n}': 'Canal {n}',
     // Templates use {name}/{n}; the layer substitutes after lookup.
     '{name} stays installed.': '{name} continua instalado.',
     '{name} is in Recently removed. OK puts it back.': '{name} está em Removidos recentemente. OK devolve.',
