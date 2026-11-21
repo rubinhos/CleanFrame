@@ -102,6 +102,13 @@
     'Channel {n} was not found.': 'O canal {n} não foi encontrado.',
     'Run a channel scan in the TV settings, then try again.': 'Faça uma busca de canais nas configurações da TV e tente de novo.',
     'Channels': 'Canais', 'Channel {n}': 'Canal {n}',
+    'All channels': 'Todos os canais', 'Loading channels…': 'Carregando canais…',
+    'No channels found. Run a channel scan in the TV settings.': 'Nenhum canal encontrado. Faça uma busca de canais nas configurações da TV.',
+    'OK adds or removes the channel from the column.': 'OK adiciona ou remove o canal da coluna.',
+    '{n} channels': '{n} canais', 'Edit saved channels': 'Editar canais salvos',
+    'Saved': 'Salvo', 'Save': 'Salvar',
+    'The column is full. Remove a channel first.': 'A coluna está cheia. Remova um canal primeiro.',
+    '{name} removed from the column.': '{name} removido da coluna.', '{name} added to the column.': '{name} adicionado à coluna.',
     // Templates use {name}/{n}; the layer substitutes after lookup.
     '{name} stays installed.': '{name} continua instalado.',
     '{name} is in Recently removed. OK puts it back.': '{name} está em Removidos recentemente. OK devolve.',

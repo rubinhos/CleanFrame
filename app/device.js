@@ -161,6 +161,23 @@
       try { tvw.setSource(tv.source, function () { lookup(); }, function () { lookup(); }); } catch (error) { lookup(); }
     }, true);
   }
+  // Every channel from the TV's last scan: [{ major, minor, name }], sorted by number.
+  function channels(done) {
+    var tvc = window.tizen && window.tizen.tvchannel;
+    if (!tvc || typeof tvc.getChannelList !== 'function') { unavailable(done); return; }
+    var finish = bounded(done, 15000);
+    try {
+      tvc.getChannelList(function (list) {
+        var out = [];
+        (list || []).forEach(function (c) {
+          if (!c || typeof c.major !== 'number' || !isFinite(c.major) || c.major < 0) return;
+          out.push({ major: c.major, minor: typeof c.minor === 'number' && c.minor > 0 ? c.minor : 0, name: String(c.channelName || c.serviceName || '').trim() });
+        });
+        out.sort(function (a, b) { return a.major - b.major || a.minor - b.minor; });
+        finish(null, out);
+      }, function (err) { finish(failure(err)); }, 'ALL', 0, 1000);
+    } catch (err) { finish(failure(err)); }
+  }
   // True when an app is installed; system shortcuts are shown only if their app exists.
   function hasApp(id) {
     try { return !!(api() && api().getAppInfo(id)); } catch (err) { return false; }
@@ -209,5 +226,5 @@
       }, function (err) { finish(failure(err)); });
     } catch (err) { finish(failure(err)); }
   }
-  window.FrameDevice = { hasApp: hasApp, launch: launch, launchApp: launchApp, art: art, home: home, settings: settings, apps: apps, sources: sources, setSource: setSource, cancelSource: cancelSource, tuneChannel: tuneChannel };
+  window.FrameDevice = { hasApp: hasApp, launch: launch, launchApp: launchApp, art: art, home: home, settings: settings, apps: apps, sources: sources, setSource: setSource, cancelSource: cancelSource, tuneChannel: tuneChannel, channels: channels };
 }());

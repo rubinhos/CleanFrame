@@ -68,10 +68,16 @@ identidade de `.local/signing.json` no momento do empacotamento. Não edite o id
   `cleanInputMap()`.
 
 ### 3.2.1 Coluna de canais salvos (à direita da grade)
-- Lista em `app/channels.js` (`window.CleanTVChannels`): `num` (rótulo), `major`/`minor`
-  (o que é sintonizado; `minor: 0` = analógico/sem subcanal), `name`, `icon` (SVG em
-  `assets/icons/`, opcional). Editar o arquivo para incluir/remover/reordenar. Não fica nas
-  preferências; `main.js` valida a lista em `CHANNELS`.
+- Lista salva nas preferências (`c.channels`: `num`, `major`, `minor`, `name`, `icon`;
+  `minor: 0` = analógico/sem subcanal), validada por `cleanChannels()` e mantida em `next()`.
+  `app/channels.js` (`window.CleanTVChannels`) só semeia a lista quando as preferências
+  ainda não têm `channels`. Ícone desconhecido é deduzido do nome (`chIcon`: globo, record,
+  sbt, band); sem ícone, a coluna mostra o número.
+- O último item da coluna é **Todos os canais** (`CH_ALL`), que abre a tela `channels`:
+  `FrameDevice.channels()` lê `tvchannel.getChannelList` (última busca de canais da TV) e
+  mostra uma grade como a de Todos os apps. OK assiste; **Editar canais salvos** (no topo)
+  troca para o modo em que OK adiciona/remove o canal da coluna (`toggleSaved`, gravado na
+  hora). Voltar sai do modo de edição e depois fecha a tela.
 - DOM: `#chDock` / `#chShelf` / `#chTrack` / `#chPlate`, vidro próprio (`IMG.mat3`,
   `#matScrim3`). Constantes `CH_TW`, `CH_TH`, `CH_PITCH`, `CH_W`, `CH_GAP`.
   `dockGeom()` centraliza grade + coluna juntas; `renderChannels()` usa a altura da grade e
@@ -88,6 +94,16 @@ identidade de `.local/signing.json` no momento do empacotamento. Não edite o id
   `record` (Commons, CC BY-SA 4.0, máscara rasterizada), `dev-vcr`. Ver
   `ADDITIONAL-SOURCES.json`. `metrics.js` foi regenerado com o mesmo cálculo de
   `scripts/build-icon-metrics.mjs` (o script original precisa de `python3` no Windows).
+
+### 3.2.2 TV ao vivo por trás da Home — testado e removido (2026-11-21)
+- Tentativa: com uma opção ligada, chamar `tizen.tvwindow.show(…, ['0px','0px','100%','100%'],
+  'MAIN')` ao abrir o app e deixar a página transparente para o canal aparecer atrás das docks.
+- Resultado na UN58TU7020: ao ligar, a TV foi para a Live TV e **fechou o CleanTV**; com a
+  opção gravada como ligada, o app passou a fechar a cada abertura. Foi preciso reinstalar
+  uma versão sem o recurso (preferência `live` é ignorada por `clean()`).
+- Conclusão: neste modelo, um app web não consegue ficar por cima da Live TV (estilo popup)
+  nem mostrar o tuner por trás via `tvwindow.show`. Não reintroduzir sem um teste isolado
+  (sem gravar preferência) e sem um caminho de recuperação.
 
 ### 3.3 Controles do topo
 - `utils()` retorna `['home', 'tv', 'apps', 'settings']` (sem `art` nesta TV).

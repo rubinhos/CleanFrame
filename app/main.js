@@ -14,14 +14,32 @@
   var IN_TW = 336, IN_TH = 96, IN_PITCH = 344, IN_H = IN_TH + 32, IN_GAP = 24;
   // Saved antenna channels: one column to the right of the app grid, scrolling vertically.
   var CH_TW = 168, CH_TH = 104, CH_PITCH = 112, CH_W = CH_TW + 32, CH_GAP = 24;
-  var CHANNELS = (Array.isArray(window.CleanTVChannels) ? window.CleanTVChannels : []).filter(function (c) {
-    return c && typeof c.major === 'number' && isFinite(c.major) && c.major >= 0 && typeof c.name === 'string' && c.name;
-  }).slice(0, 64).map(function (c) {
-    var minor = typeof c.minor === 'number' && isFinite(c.minor) && c.minor > 0 ? c.minor : 0;
-    return { key: 'ch' + c.major + '.' + minor, major: c.major, minor: minor, name: c.name.slice(0, 40),
-      num: typeof c.num === 'string' && c.num ? c.num.slice(0, 8) : c.major + (minor ? '.' + minor : ''),
-      icon: typeof c.icon === 'string' && /^[a-z0-9-]{1,40}$/.test(c.icon) ? c.icon : '' };
-  });
+  // Saved channels live in the preferences (c.channels); channels.js is the first-run list.
+  // Each entry: { num, major, minor, name, icon }; minor 0 = analog or no subchannel.
+  var CH_MAX = 64, CH_ICONS = [['globo', /globo/i], ['record', /record/i], ['sbt', /\bsbt\b/i], ['band', /\bband\b|bandeirantes/i]];
+  function chNum(major, minor) { return (major < 10 ? '0' : '') + major + (minor ? '.' + minor : ''); }
+  function chIcon(name) { for (var i = 0; i < CH_ICONS.length; i++) if (CH_ICONS[i][1].test(name)) return CH_ICONS[i][0]; return ''; }
+  function sameChannel(a, b) { return a.major === b.major && (a.minor === b.minor || (!(a.minor > 0) && !(b.minor > 0))); }
+  function cleanChannel(c) {
+    if (!c || typeof c.major !== 'number' || !isFinite(c.major) || c.major < 0 || Math.floor(c.major) !== c.major) return null;
+    var minor = typeof c.minor === 'number' && isFinite(c.minor) && c.minor > 0 ? Math.floor(c.minor) : 0;
+    var name = typeof c.name === 'string' && c.name.trim() ? c.name.trim().slice(0, 40) : chNum(c.major, minor);
+    return { key: 'ch' + c.major + '.' + minor, major: c.major, minor: minor, name: name,
+      num: typeof c.num === 'string' && c.num ? c.num.slice(0, 8) : chNum(c.major, minor),
+      icon: typeof c.icon === 'string' && /^[a-z0-9-]{1,40}$/.test(c.icon) ? c.icon : chIcon(name) };
+  }
+  function cleanChannels(list) {
+    var out = [];
+    (Array.isArray(list) ? list : []).forEach(function (c) {
+      var ch = cleanChannel(c);
+      if (ch && out.length < CH_MAX && !out.some(function (o) { return sameChannel(o, ch); })) out.push(ch);
+    });
+    return out;
+  }
+  function stripChannel(ch) { return { num: ch.num, major: ch.major, minor: ch.minor, name: ch.name, icon: ch.icon }; }
+  var CH_ALL = { key: 'ch-all', kind: 'all' };
+  // Column items: saved channels, then "All channels".
+  function colItems() { return (S.c.channels || []).concat([CH_ALL]); }
   var DOCK_MODES = { both: { tw: 288, th: 200, pitch: 296 }, text: { tw: 288, th: 104, pitch: 296 }, icons: { tw: 176, th: 144, pitch: 184 } };
   var GRID_ROW = 240, GRID_COL = 344, COLS = 5;
   var ED_ROW = 80, ED_SEP = 56, ED_VIEW = 752;
@@ -380,6 +398,7 @@
     return {
       seen: seen, wfx: s.wfx === 'off' ? 'off' : 'on',
       sort: SORT_IDS.indexOf(s.sort) >= 0 ? s.sort : 'custom', used: cleanUsed(s.used), inputs: cleanInputMap(s.inputs),
+      channels: cleanChannels(Array.isArray(s.channels) ? s.channels : window.CleanTVChannels),
       bg: pick(modern.bg, LOOK_VALUES.bg, legacyList ? 'dark' : 'photo'), layout: pick(modern.layout, LOOK_VALUES.layout, legacyList ? 'list' : 'dock'),
       apps: pick(modern.apps, LOOK_VALUES.apps, legacyList ? 'text' : 'both'), controls: pick(modern.controls, LOOK_VALUES.controls, 'both'),
       focus: pick(modern.focus, LOOK_VALUES.focus, legacyList ? 'type' : 'glass'), material: pick(modern.material, LOOK_VALUES.material, 'soft'),
@@ -423,6 +442,7 @@
   function serialise(c) {
     var out = {};
     Object.keys(c).forEach(function (key) { out[key] = c[key]; });
+    out.channels = (c.channels || []).map(stripChannel);
     out.version = 2; out.look = lookOf(c); out.dock = c.home.slice(); out.wallpaper = c.wall;
     out.theme = c.layout === 'list' ? 'list' : 'shore';
     out.appRecords = [];
@@ -443,7 +463,7 @@
   }
   function clearSession() { S.undo = []; S.removedAt = {}; S.note = null; S.err = null; }
   function begin() { S.note = null; }
-  function next(home, recent) { var c = lookOf(S.c); c.home = home; c.recent = recent; c.lastApp = S.c.lastApp; c.mode = S.c.mode; c.seen = (S.c.seen || []).slice(); c.wfx = S.c.wfx; c.sort = S.c.sort; c.used = S.c.used; c.inputs = S.c.inputs; return c; }
+  function next(home, recent) { var c = lookOf(S.c); c.home = home; c.recent = recent; c.lastApp = S.c.lastApp; c.mode = S.c.mode; c.seen = (S.c.seen || []).slice(); c.wfx = S.c.wfx; c.sort = S.c.sort; c.used = S.c.used; c.inputs = S.c.inputs; c.channels = S.c.channels; return c; }
   function snap() { return { home: S.c.home.slice(), recent: S.c.recent.slice() }; }
   function pushRecent(list, id) { return [id].concat(without(list, id)).slice(0, 5); }
   function write(c, label) {
@@ -773,7 +793,7 @@
         f.u = clamp(f.u, 0, U.length - 1);
         if (k === x.prev && f.u > 0) f.u--;
         else if (k === x.next && f.u < U.length - 1) f.u++;
-        else if (k === x.inn || k === 'back') { f.zone = f.uf === 'channels' && CHANNELS.length ? 'channels' : 'apps'; f.uf = null; }
+        else if (k === x.inn || k === 'back') { f.zone = f.uf === 'channels' ? 'channels' : 'apps'; f.uf = null; }
         else if (k === 'ok') { S.lastUtil = f.u; utilAction(U[f.u]); return; }
         S.lastUtil = f.u;
         return;
@@ -781,14 +801,13 @@
       f.uf = null;
       if (f.zone === 'channels') {
         // Channel column: Up/Down choose (Up from the first reaches the controls),
-        // OK tunes, Left or Back returns to the selected app.
-        var cn = CHANNELS.length;
-        if (!cn) { f.zone = 'apps'; return; }
+        // OK tunes (or opens All channels), Left or Back returns to the selected app.
+        var col = colItems(), cn = col.length;
         f.c = clamp(f.c || 0, 0, cn - 1);
         if (k === 'up') { if (f.c > 0) f.c--; else { f.zone = 'util'; f.uf = 'channels'; f.u = clamp(S.lastUtil, 0, U.length - 1); } }
         else if (k === 'down') { if (f.c < cn - 1) f.c++; }
         else if (k === 'left' || k === 'back') f.zone = 'apps';
-        else if (k === 'ok') tuneChannel(CHANNELS[f.c]);
+        else if (k === 'ok') { if (col[f.c].kind === 'all') openChannels(); else tuneChannel(col[f.c]); }
         return;
       }
       if (f.zone === 'inputs') {
@@ -805,7 +824,7 @@
       f.zone = 'apps';
       var cols = dockGeom(h.length).cols, col = i % cols;
       function toInputs() { if (S.inputs.length) { f.zone = 'inputs'; f.n = clamp(f.n || 0, 0, S.inputs.length - 1); } }
-      function toChannels() { if (CHANNELS.length) { f.zone = 'channels'; f.c = clamp(f.c || 0, 0, CHANNELS.length - 1); } }
+      function toChannels() { f.zone = 'channels'; f.c = clamp(f.c || 0, 0, colItems().length - 1); }
       if (k === 'back') openMessage('leave');
       else if (!h.length) { if (k === 'up') { f.zone = 'util'; f.u = clamp(S.lastUtil, 0, U.length - 1); } else if (k === 'down') toInputs(); else if (k === 'right') toChannels(); else if (k === 'ok') addAppsRoute(); }
       // Grid: Up/Down move between rows; Up from the first row reaches the controls,
@@ -976,6 +995,64 @@
     point: function (t, z, i) { if (z === 'grid') { t.f.zone = 'grid'; t.f.i = i; } else if (z === 'head') t.f.zone = 'head'; else return; this.key(t, 'ok'); }
   };
 
+  /* ---------- All channels (from the TV's last channel scan) ---------- */
+  function openChannels() {
+    var t = push({ id: 'channels', mode: 'browse', top: 0, list: [], loading: true, error: null, f: { zone: 'grid', i: 0 } });
+    loadChannels(t);
+  }
+  function loadChannels(t) {
+    t.loading = true; t.error = null;
+    FrameDevice.channels(function (err, list) {
+      t.loading = false;
+      if (err) t.error = err.message || T('The TV could not open this screen.');
+      else {
+        t.list = cleanChannels(list.map(function (c) {
+          var saved = savedChannel(c);
+          return saved ? stripChannel(saved) : { major: c.major, minor: c.minor, name: c.name };
+        }));
+      }
+      if (top() === t && !t.list.length) t.f.zone = 'head';
+      render();
+    });
+  }
+  function savedChannel(c) { var s = S.c.channels || [], i; for (i = 0; i < s.length; i++) if (sameChannel(s[i], c)) return s[i]; return null; }
+  function toggleSaved(ch) {
+    var saved = savedChannel(ch), list = (S.c.channels || []).slice(), c = next(S.c.home.slice(), S.c.recent.slice());
+    if (saved) list = list.filter(function (s) { return s !== saved; });
+    else if (list.length >= CH_MAX) { S.note = T('The column is full. Remove a channel first.'); return; }
+    else list.push(cleanChannel(stripChannel(ch)));
+    c.channels = list;
+    S.note = write(c, saved ? 'Remove channel' : 'Save channel') ? (saved ? T('{name} removed from the column.', { name: ch.name }) : T('{name} added to the column.', { name: ch.name })) : null;
+  }
+  function channelsHead(t) {
+    if (t.error) return [['retry', T('Try again'), '', '']];
+    return t.mode === 'edit' ? [['done', T('Done'), '', 'check']] : [['edit', T('Edit saved channels'), '', 'plus']];
+  }
+  V.channels = {
+    sheet: true,
+    norm: function (t) {
+      var n = t.list.length;
+      t.f.i = clamp(t.f.i, 0, Math.max(0, n - 1));
+      if (!n) t.f.zone = 'head';
+    },
+    key: function (t, k) {
+      var f = t.f, items = t.list, n = items.length, col = f.i % COLS, row = Math.floor(f.i / COLS);
+      S.note = null;
+      if (k === 'back') { if (t.mode === 'edit') t.mode = 'browse'; else pop(); return; }
+      if (f.zone === 'head') {
+        if (k === 'down' && n) f.zone = 'grid';
+        else if (k === 'ok') { if (t.error) loadChannels(t); else t.mode = t.mode === 'edit' ? 'browse' : 'edit'; }
+        return;
+      }
+      if (k === 'left' && col > 0) f.i--;
+      else if (k === 'right' && col < COLS - 1 && f.i < n - 1) f.i++;
+      else if (k === 'down' && row < Math.ceil(n / COLS) - 1) f.i = Math.min(f.i + COLS, n - 1);
+      else if (k === 'up') { if (row > 0) f.i -= COLS; else f.zone = 'head'; }
+      else if (k === 'ok' && n) { if (t.mode === 'edit') toggleSaved(items[f.i]); else tuneChannel(items[f.i]); }
+    },
+    point: function (t, z, i) { if (z === 'grid') { t.f.zone = 'grid'; t.f.i = i; } else if (z === 'head') t.f.zone = 'head'; else return; this.key(t, 'ok'); }
+  };
+
   /* ---------- B: two-zone Home editor ---------- */
   function otherGroups() {
     var rec = S.c.recent.filter(function (id) { return !onHome(id) && app(id); });
@@ -1087,8 +1164,7 @@
       { id: 'layout', label: T('Layout'), value: VALUE_NAMES[S.c.layout] },
       { id: 'typography', label: T('Typography'), value: FONTS[S.c.font].name },
       { id: 'focus', label: T('Focus'), value: VALUE_NAMES[S.c.focus] + (materialApplies() ? ', ' + VALUE_NAMES[S.c.material] : '') },
-      { id: 'weather', label: T('Weather effects'), value: VALUE_NAMES[S.c.wfx] },
-      { id: 'editor', label: T('Apps on Home'), value: n + (n === 1 ? ' app' : ' apps') },
+      { id: 'weather', label: T('Weather effects'), value: VALUE_NAMES[S.c.wfx] },      { id: 'editor', label: T('Apps on Home'), value: n + (n === 1 ? ' app' : ' apps') },
       { id: 'sort', label: T('Sort apps'), value: VALUE_NAMES[S.c.sort] }]
       .concat(inputSources().length ? [{ id: 'inputedit', label: T('Input icons'), value: (function () { var ni = Object.keys(S.c.inputs || {}).length; return ni ? String(ni) : T('Default'); }()) }] : [])
       .concat([{ id: 'samsung', label: T('Samsung'), value: T('Home and TV settings') }]);
@@ -1239,8 +1315,7 @@
       if (error && error.row === 'mode') applyRotation(error.patch.mode);
       else if (error) setLook(error.patch, { row: error.row });
     } else if (item.axis === 'mode') applyRotation(item.value);
-    else if (item.axis === 'wfx') applyWeatherFx(item.value);
-    else if (item.axis === 'sort') applySort(item.value);
+    else if (item.axis === 'wfx') applyWeatherFx(item.value);    else if (item.axis === 'sort') applySort(item.value);
     else if (item.axis === 'inputicon') applyInputIcon(t.inputKey, item.value);
     else if (item.action.indexOf('inputedit.') === 0) openInputPick(item.action.slice(10), item.label);
     else if (item.axis) { patch[item.axis] = item.value; setLook(patch, { row: item.axis }); }
@@ -1502,7 +1577,7 @@
     var bottom = 908 - (S.inputs.length ? IN_H + IN_GAP : 0);
     if (n < 0) { w = 912; shelfW = 880; rows = total = 1; h = m.th + 32; }
     // The channel column sits to the right; the pair is centred together.
-    var side = CHANNELS.length ? CH_GAP + CH_W : 0;
+    var side = CH_GAP + CH_W;
     return { x: Math.round((1920 - w - side) / 2), y: bottom - h, h: h, w: w, shelf: shelfW, cols: cols, rows: rows, total: total, rp: rp, vis: cols, broad: false, empty: n < 0, tw: m.tw, th: m.th, pitch: m.pitch };
   }
   /* Returns the vertical offset: the window moves one row when focus passes an edge. */
@@ -1548,9 +1623,8 @@
   /* Channel column: same glass as the grid, its height, one tile per row; the track
      scrolls a tile at a time so the focused channel stays in view. */
   function renderChannels(hs, g) {
-    var n = CHANNELS.length, focus = hs.zone === 'channels', at = clamp(hs.c || 0, 0, Math.max(0, n - 1));
+    var items = colItems(), n = items.length, focus = hs.zone === 'channels', at = clamp(hs.c || 0, 0, Math.max(0, n - 1));
     var x, y, h, vis, first;
-    if (!n) { chDock.className = 'dock ch-dock is-off'; return; }
     x = g.x + g.w + CH_GAP; y = g.y; h = g.h;
     vis = Math.max(1, Math.floor((h - 32 + 8) / CH_PITCH));
     first = clamp(scroll.ch, 0, Math.max(0, n - vis));
@@ -1566,15 +1640,17 @@
     IMG.mat3.style.left = (-x) + 'px'; IMG.mat3.style.top = (-y) + 'px';
     IMG.mat3.style.transformOrigin = '960px ' + (y + h / 2) + 'px';
     matScrim3.style.left = (-x) + 'px'; matScrim3.style.top = (SCRIM_Y - y) + 'px';
-    keyed(chTrack, CHANNELS, function (el, ch, i) {
-      setContent(el, ch.key + '|' + ch.icon + '|' + ch.name, function () {
+    keyed(chTrack, items, function (el, ch, i) {
+      var all = ch.kind === 'all';
+      setContent(el, all ? 'all' : ch.key + '|' + ch.icon + '|' + ch.name, function () {
+        if (all) return '<span class="tile-content"><span class="ch-all-label">' + esc(T('All channels')) + '</span></span>';
         return '<span class="tile-content">' + (ch.icon ? markHtml(ch.icon, 64, 40, 40) : '<span class="ch-num-big">' + esc(ch.num) + '</span>')
-          + '<span class="ch-label"><span class="ch-num">' + esc(ch.num) + '</span> ' + esc(ch.name) + '</span></span>';
+          + '<span class="ch-label">' + (ch.icon ? '<span class="ch-num">' + esc(ch.num) + '</span> ' : '') + esc(ch.name) + '</span></span>';
       });
-      el.className = 'tile k-ch' + (focus && i === at ? ' is-focus' : '');
+      el.className = 'tile k-ch' + (all ? ' k-ch-all' : '') + (focus && i === at ? ' is-focus' : '');
       el.style.transform = 'translate3d(0,' + (i * CH_PITCH) + 'px,0)';
-      el.setAttribute('role', 'button'); el.setAttribute('aria-label', T('Channel {n}', { n: ch.num }) + ', ' + ch.name);
-      attrs(el, 'channel', i, 'home.channel.' + ch.key);
+      el.setAttribute('role', 'button'); el.setAttribute('aria-label', all ? T('All channels') : T('Channel {n}', { n: ch.num }) + ', ' + ch.name);
+      attrs(el, 'channel', i, all ? 'home.channels.all' : 'home.channel.' + ch.key);
     });
     chPlate.className = 'plate' + (focus ? ' on-focus' : '');
     chPlate.style.transform = 'translate3d(0,' + (at * CH_PITCH) + 'px,0)';
@@ -1922,7 +1998,37 @@
     var a = app(id), state = onHome(id) ? badge(true) + '<span>' + T('On Home') + '</span>' : '';
     return '<span class="panel-content">' + appMark(a, 120, 72, 58) + '<span class="label">' + esc(a.name) + '</span></span><span class="state">' + state + '</span>';
   }
+  FRAMES.channels = FRAMES.apps;
+  function channelTileHtml(ch, edit) {
+    var saved = !!savedChannel(ch);
+    var state = edit ? badge(saved) + '<span>' + (saved ? T('Saved') : T('Save')) + '</span>' : saved ? badge(true) + '<span>' + T('Saved') + '</span>' : '';
+    return '<span class="panel-content">' + (ch.icon ? markHtml(ch.icon, 120, 72, 58) : '<span class="ch-big">' + esc(ch.num) + '</span>')
+      + '<span class="label">' + (ch.icon ? '<span class="ch-num">' + esc(ch.num) + '</span> ' : '') + esc(ch.name) + '</span></span><span class="state">' + state + '</span>';
+  }
   var FILLS = {
+    channels: function (t, el) {
+      var f = t.f, items = t.list, n = items.length, rows = Math.ceil(n / COLS), vis = 3, row = Math.floor(f.i / COLS), edit = t.mode === 'edit';
+      var sub = t.loading ? T('Loading channels…') : t.error ? t.error : !n ? T('No channels found. Run a channel scan in the TV settings.')
+        : S.note || (edit ? T('OK adds or removes the channel from the column.') : T('{n} channels', { n: n }));
+      setHTML(el.title, T('All channels'));
+      setHTML(el.sub, esc(sub));
+      setHTML(el.head, headButtons(channelsHead(t), f.zone === 'head' ? 0 : -1, 'channels'));
+      el.head.className = 's-head' + (f.zone === 'head' ? ' is-awake' : '');
+      if (f.zone === 'grid') { if (row < t.top) t.top = row; if (row > t.top + vis - 1) t.top = row - vis + 1; }
+      t.top = clamp(t.top, 0, Math.max(0, rows - vis));
+      keyed(el.grid, items, function (tile, ch, i) {
+        var focus = f.zone === 'grid' && i === f.i;
+        setContent(tile, [ch.key, ch.name, ch.icon, edit, !!savedChannel(ch)].join('|'), function () { return channelTileHtml(ch, edit); });
+        tile.className = 'gt gt-ch' + (focus ? ' is-focus' : '');
+        tile.style.transform = 'translate3d(' + ((i % COLS) * GRID_COL) + 'px,' + (Math.floor(i / COLS) * GRID_ROW) + 'px,0)';
+        tile.setAttribute('role', 'button'); tile.setAttribute('aria-label', T('Channel {n}', { n: ch.num }) + ', ' + ch.name);
+        attrs(tile, 'grid', i, 'channels.' + (edit ? 'toggle.' : 'watch.') + ch.key);
+      });
+      el.grid.style.transform = 'translate3d(0,' + (-t.top * GRID_ROW) + 'px,0)';
+      el.view.className = 'grid-view' + (t.top > 0 ? ' more-before' : '') + (rows - t.top > vis ? ' more-after' : '');
+      el.before.className = 'row-cue grid-before' + (t.top > 0 ? ' is-on' : '');
+      el.after.className = 'row-cue grid-after' + (rows - t.top > vis ? ' is-on' : '');
+    },
     apps: function (t, el) {
       var f = t.f, items = appsItems(), n = items.length, rows = Math.ceil(n / COLS), vis = 3, row = Math.floor(f.i / COLS);
       setHTML(el.title, T('All apps'));
