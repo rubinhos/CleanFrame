@@ -20,9 +20,10 @@
   var EXTRA_BRANDS = {'rJeHak5zRg.Spotify': 'spotify', '5b8c3eb16b.BeamCTVDev': 'hbomax', 'cj37Ni3qXM.HBONow': 'hbomax', '3KA0pm7a7V.TubiTV': 'tubi',
     'OGLLvqej7u.CrunchyrollWebApp': 'crunchyroll', 'NRi6kdBYJ0.AirPlayWebApp': 'airplay', 'LnLzvqrcEY.globo': 'globoplay',
     'GHI3a0zMSx.XboxGamePass': 'xbox', 'StrmisoTV1.Streamiso': 'streamiso', 'org.tizen.browser': 'internet',
-    'C9cMLuRno1.emanual': 'emanual', 'qtMHjALHus.TVDeviceCare': 'devicecare', 'nbCEREFaoy.mercadoplay': 'mercadoplay'};
+    'C9cMLuRno1.emanual': 'emanual', 'jPPp4KCHp4.emanual': 'emanual', 'qtMHjALHus.TVDeviceCare': 'devicecare', 'nbCEREFaoy.mercadoplay': 'mercadoplay',
+    'Jz7aUrV2Q4.Twitch': 'twitch', 'AQKO41xyKP.AmazonAlexa': 'alexa', 'J9fZJDMi1v.SecurityCenter': 'security', 'XPkceUl3N4.UsbCamApp': 'camera'};
   var INTERNAL = ['adplatform.ADPlayer', 'WykOS4t4F0.cmsWebApp', '25emanual3.emanual',
-    'd0m1lV1nt2.emanual', '2022ePop01.SmartTV',
+    'd0m1lV1nt2.emanual', '2022ePop01.SmartTV', 'Oxv5Tb6i2d.SmartTV',
     'ZODRT12q2l.WebAccountExtension', 'ByJlgt0XeD.CastSettingsApp', 'tv6pbVMQFF.PrivacyChoices'];
   var SELF = 'nClrkHome1.FrameHome';
   function api() { return window.tizen && window.tizen.application; }

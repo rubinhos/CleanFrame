@@ -8,10 +8,12 @@
   /* ---------- Bundled data ---------- */
   var ASSETS = 'assets/', ICONS = ASSETS + 'icons/', WP = ASSETS + 'wallpapers/';
   // Extra bundled marks that saved native apps may use (see device.js EXTRA_BRANDS).
-  var MARK_BRANDS = ['hbomax', 'spotify', 'tubi', 'crunchyroll', 'airplay', 'globoplay', 'xbox', 'streamiso', 'internet', 'emanual', 'devicecare', 'mercadoplay'];
+  var MARK_BRANDS = ['hbomax', 'spotify', 'tubi', 'crunchyroll', 'airplay', 'globoplay', 'xbox', 'streamiso', 'internet', 'emanual', 'devicecare', 'mercadoplay', 'twitch', 'alexa', 'security', 'camera'];
   var CAP = 64, SCRIM_Y = 560, DOCK_COLS = 5, DOCK_ROWS = 2, DOCK_ROW_GAP = 16;
   // HDMI inputs dock below the app grid: tile size, dock height and gap above it.
   var IN_TW = 336, IN_TH = 96, IN_PITCH = 344, IN_H = IN_TH + 32, IN_GAP = 24;
+  // TVs with more sources narrow the tiles down to IN_MIN_TW, then scroll within IN_MAXW.
+  var IN_MAXW = 1728, IN_MIN_TW = 264;
   // Saved antenna channels: one column to the right of the app grid, scrolling vertically.
   var CH_TW = 168, CH_TH = 104, CH_PITCH = 112, CH_W = CH_TW + 32, CH_GAP = 24;
   // Saved channels live in the preferences (c.channels); channels.js is the first-run list.
@@ -125,7 +127,7 @@
     wallShown: null, wallPending: null, wallError: null,
     shown: null, pending: null, lookError: null, bundleKey: null, previewBundle: null, reflow: false, fontSwitch: false
   };
-  var scroll = { first: 0, off: 0, photo: 0, photoArrange: 0, ch: 0 };
+  var scroll = { first: 0, off: 0, photo: 0, photoArrange: 0, ch: 0, inp: 0 };
   function pick(v, list, fallback) {
     v = String(v || '').toLowerCase();
     for (var i = 0; i < list.length; i++) if (list[i].toLowerCase() === v) return list[i];
@@ -1599,12 +1601,24 @@
   /* Horizontal inputs dock: same glass material as the app grid, registered to the stage. */
   function renderInputs(hs) {
     var list = S.inputs, n = list.length, w, x, y, focus = hs.zone === 'inputs', at = clamp(hs.n || 0, 0, Math.max(0, n - 1));
+    var room = IN_MAXW - 32 + 8, pitch = IN_PITCH, tw = IN_TW, vis = n, first = 0;
     if (!n || hs.mode === 'arrange') { inDock.className = 'dock inputs-dock is-off'; return; }
-    w = n * IN_PITCH - 8 + 32; x = Math.round((1920 - w) / 2); y = 908 - IN_H;
+    // Narrow the tiles to fit; past the minimum width, scroll a tile at a time.
+    if (n * IN_PITCH > room) { tw = Math.max(IN_MIN_TW, Math.floor(room / n) - 8); pitch = tw + 8; }
+    if (n * pitch > room) {
+      vis = Math.max(1, Math.floor(room / pitch));
+      first = clamp(scroll.inp, 0, n - vis);
+      if (at < first) first = at;
+      if (at > first + vis - 1) first = at - vis + 1;
+    }
+    scroll.inp = first;
+    w = vis * pitch - 8 + 32; x = Math.round((1920 - w) / 2); y = 908 - IN_H;
     inDock.className = 'dock inputs-dock';
     inDock.style.left = x + 'px'; inDock.style.top = y + 'px'; inDock.style.width = w + 'px'; inDock.style.height = IN_H + 'px';
-    inShelf.style.width = (n * IN_PITCH - 8) + 'px';
-    inDock.style.setProperty('--tile-w', IN_TW + 'px'); inDock.style.setProperty('--tile-h', IN_TH + 'px'); inDock.style.setProperty('--dock-h', IN_H + 'px');
+    inShelf.style.width = (vis * pitch - 8) + 'px';
+    inShelf.className = 'shelf' + (first > 0 ? ' fade-l' : '') + (first + vis < n ? ' fade-r' : '');
+    inTrack.style.transform = 'translate3d(' + (-first * pitch) + 'px,0,0)';
+    inDock.style.setProperty('--tile-w', tw + 'px'); inDock.style.setProperty('--tile-h', IN_TH + 'px'); inDock.style.setProperty('--dock-h', IN_H + 'px');
     IMG.mat2.style.left = (-x) + 'px'; IMG.mat2.style.top = (-y) + 'px';
     IMG.mat2.style.transformOrigin = '960px ' + (y + IN_H / 2) + 'px';
     matScrim2.style.left = (-x) + 'px'; matScrim2.style.top = (SCRIM_Y - y) + 'px';
@@ -1613,12 +1627,12 @@
         return '<span class="tile-content"><span class="in-ico">' + (it.mark ? deviceIcon(it.icon) : icon(it.icon)) + '</span><span class="in-name">' + esc(it.name) + '</span><span class="in-state">' + esc(it.state) + '</span></span>';
       });
       el.className = 'tile k-input' + (focus && i === at ? ' is-focus' : '') + (!it.connected ? ' is-unplugged' : '');
-      el.style.transform = 'translate3d(' + (i * IN_PITCH) + 'px,0,0)';
+      el.style.transform = 'translate3d(' + (i * pitch) + 'px,0,0)';
       el.setAttribute('role', 'button'); el.setAttribute('aria-label', it.name + ', ' + it.state);
       attrs(el, 'input', i, 'home.input.' + it.key);
     });
     inPlate.className = 'plate' + (focus ? ' on-focus' : '');
-    inPlate.style.transform = 'translate3d(' + (at * IN_PITCH) + 'px,0,0)';
+    inPlate.style.transform = 'translate3d(' + (at * pitch) + 'px,0,0)';
   }
   /* Channel column: same glass as the grid, its height, one tile per row; the track
      scrolls a tile at a time so the focused channel stays in view. */

@@ -72,6 +72,30 @@
     "note": "Generic glyph; no freely licensed Mercado Play mark was found."
   },
   {
+    "icon": "twitch",
+    "source": "https://raw.githubusercontent.com/simple-icons/simple-icons/16.36.0/icons/twitch.svg",
+    "licence": "CC0-1.0",
+    "note": "Shape unchanged; white fill for launcher."
+  },
+  {
+    "icon": "alexa",
+    "source": "CleanFrame original generic outline (speech bubble and voice bars)",
+    "licence": "MIT",
+    "note": "Generic glyph; no freely licensed Amazon Alexa mark was found."
+  },
+  {
+    "icon": "security",
+    "source": "CleanFrame original generic outline (shield and padlock)",
+    "licence": "MIT",
+    "note": "Generic glyph for Samsung Security Center, not a brand mark."
+  },
+  {
+    "icon": "camera",
+    "source": "CleanFrame original generic outline (camera)",
+    "licence": "MIT",
+    "note": "Generic glyph for the USB camera app, not a brand mark."
+  },
+  {
     "icon": "dev-playstation",
     "source": "https://raw.githubusercontent.com/simple-icons/simple-icons/16.36.0/icons/playstation.svg",
     "licence": "CC0-1.0",
