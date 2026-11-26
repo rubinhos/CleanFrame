@@ -12,17 +12,34 @@ anything here.
 
 ## Outcome (read this first)
 
-**The physical Home button could not be redirected to a public-signed web launcher on this
-TV.** Setting every writable Home key to the launcher — the main Home operation
-(`app_operation_set_current_app`), `db/appfw/home_appid`, `db/first_screen/type` and
-`db/appfw/overlay_home_appid` — left the physical Home button still opening Samsung's menu.
-`util_is_appbooting_supported_webapp_byappid()` returns **0 for every app id**, including
-Samsung's own Home apps, so native Home routing uses a protected platform path a public app
-cannot take on this firmware. The app installs, launches and is fully usable; only the native
-Home reassignment is unavailable. See the device report for the full evidence.
+**The physical Home button CAN be reassigned to the sideloaded launcher on this TV — working.**
+The mechanism is a row in a SQLite key-routing database, not vconf:
+`/opt/dbspace/.app-context.db`, table `key_filter`, row `key='XF86Home'`. [`home_db.py`](home_db.py)
+backs up, edits and restores it. This mechanism was established by, and adapted from,
+[DavidNgugi/samsung-tv-unlock](https://github.com/DavidNgugi/samsung-tv-unlock) on the same
+firmware `T-NKLAUABC-2310.0`.
 
-The helper, baseline and transport below are retained because the read/query/apply/restore
-path itself works reliably — the limitation is a device policy, not the tooling.
+The `Control.cs` helper below (main Home operation + `home_appid` / `first_screen/type` /
+`overlay_home_appid`) governs only the **warm-wake / first screen**; those keys do **not** move
+the physical Home button (verified). `util_is_appbooting_supported_webapp_byappid()` returns 0
+for every app id here and is not the gate. **Cold boot** still opens the TV viewer because
+`db/appfw/startup_appid` does not exist and the SDK user cannot create a system key.
+
+## home_db.py — the physical Home key
+
+`home_db.py` runs as SDK UID 901 through the owner-supplied injection transport (kept in
+`.local/`). Subcommands:
+
+| Command | Effect |
+| --- | --- |
+| `backup` | Copy the stock `.app-context.db` (+journal) to a local backup (the restore source) |
+| `dump` | Print the `key_filter` `XF86Home` rows and `managed_app` schema from the local copy |
+| `apply` | Register the launcher in `managed_app` (ui_type NULL) and point the `XF86Home` row at `package:<APP_ID>`, then replace the live DB |
+| `restore` | Push the stock DB back into place |
+
+`apply`/`restore` replace the live DB (`rm` live + journal, `cp` the new file as UID 901). The
+key router reads the file at boot, so **a wall power-cycle is required** after either. Always
+`backup` before the first `apply`.
 
 ## What differs from the Tizen 9 reference helper (all established on-device)
 

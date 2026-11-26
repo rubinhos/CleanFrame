@@ -1,94 +1,100 @@
-# UN50AU8000 (Tizen 6.0): native Home investigation report
+# UN50AU8000 (Tizen 6.0): native Home replacement
 
-A device report for an authorised, non-root experiment on a **Samsung UN50AU8000-class TV**
-(internal model `T-NKLAUABC`, firmware generation `…-2310.0`, **Tizen 6.0.0, ARMv7/32-bit**).
-It records what was tried to make the physical **Home** button open an installed public-signed
-web launcher, and why it did not succeed on this firmware. The adapted helper and wrappers are
-in [`scripts/native-home/au8000/`](../scripts/native-home/au8000/README.md). Personal values
-(addresses, device identifier, certificate and application identities) are kept out of this
-report and out of the committed source.
+A device report for an authorised, non-root experiment on a **Samsung UN50AU8000GXZD**
+(internal model `T-NKLAUABC`, firmware `…-2310.0`, **Tizen 6.0.0, ARMv7/32-bit**). It records
+how the physical **Home** button was reassigned to the sideloaded launcher, the mechanism and
+its limits. Tooling is in [`scripts/native-home/au8000/`](../scripts/native-home/au8000/README.md).
+Personal values (addresses, device identifier, certificate and application identities) are kept
+out of this report and out of the committed source.
 
-This complements, and does not change, the reference results in
-[tv-status.md](tv-status.md) or the other reports in [compatibility.md](compatibility.md).
+The physical-Home mechanism below was established by, and adapted from,
+[DavidNgugi/samsung-tv-unlock](https://github.com/DavidNgugi/samsung-tv-unlock), which first
+documented it on the same firmware `T-NKLAUABC-2310.0`.
 
 ## Summary
 
-- The launcher **installs, signs, launches and is fully usable** with the normal remote,
-  including the fork's input dock and saved-channel features.
-- The **physical Home button could not be reassigned** to the launcher. It keeps opening
-  Samsung's menu even with every writable Home key pointed at the launcher.
-- Root cause: `util_is_appbooting_supported_webapp_byappid()` returns **0 for every app id**
-  on this firmware — including Samsung's own Home apps — so the real Home-launch path is a
-  protected platform mechanism a public-signed web app cannot enter. This matches the earlier
-  UN58TU7020 (Tizen 5.5) result where native Home also could not be achieved.
+- The launcher **installs, signs, launches and is fully usable** with the normal remote.
+- The **physical Home button can be reassigned** to the launcher — **working on this TV**.
+- The mechanism is **not** vconf. The Home key is a row in a SQLite key-routing database;
+  editing vconf (`home_appid`, `first_screen/type`, `overlay_home_appid`, the main app-control
+  operation) has **no effect on the physical Home button** (verified first-hand). Those keys
+  govern the warm-wake / first screen only.
+- **Reversible, no root:** a data-plane edit of a system DB file, applied as SDK UID 901, with
+  the stock DB kept for restore. A wall power-cycle is required to load it.
+
+## The physical Home key (what actually works)
+
+The physical Home key is a row in `/opt/dbspace/.app-context.db`, table `key_filter`:
+
+```
+appid='com.samsung.tv.csfs'  key='XF86Home'  request='launch'
+  target_selector='package:com.samsung.tv.csfs'  args='entry_point:smarthub_key'
+```
+
+To route it to the launcher (`package:` holds the **application id**, not the package name):
+
+```sql
+INSERT OR IGNORE INTO managed_app(appid, ui_type, source) VALUES('<APP_ID>', NULL, NULL);
+UPDATE key_filter SET target_selector='package:<APP_ID>', args=NULL
+  WHERE key='XF86Home' AND appid='com.samsung.tv.csfs';
+```
+
+The launcher must be registered in `managed_app` with `ui_type = NULL` (the value full-screen
+apps use). `/opt/dbspace` is group-writable by `system_share`, and UID 901 (sdk) is in that
+group, so the replacement is written by: `rm` the live `.app-context.db` + its journal, then `cp`
+the edited copy in. The router reads the file **at boot**, so a wall power-cycle is required.
+See [`scripts/native-home/au8000/home_db.py`](../scripts/native-home/au8000/README.md).
 
 ## Device capability (read-only survey, as SDK user UID 901)
 
 | Item | Value |
 | --- | --- |
 | Model / firmware | `T-NKLAUABC`, `…-2310.0`, Tizen 6.0.0, armv7l |
-| Arbitrary `sdb shell` | Closed (returns empty / `closed`), like the TU7020 |
-| SDK-user execution | Works via the reviewed appinstall-argument route; runs as **UID 901 (sdk)** |
-| .NET runtime on TV | Microsoft.NETCore.App **2.0–3.1 only** (no .NET 6) |
-| Native libs present | `libapp-context-manager-common.so`, `libcapi-appfw-app-operation-tv.so.0`, `libvconf.so.0` |
+| Arbitrary `sdb shell` | Closed; SDK-user execution works via the appinstall-argument route as **UID 901** |
+| `/opt/dbspace` | `drwxrwxr-x root system_share` — group-writable by UID 901 |
+| `/usr/bin/sqlite3` | Present on the TV (edits were made locally regardless) |
+| .NET runtime on TV | Microsoft.NETCore.App 2.0–3.1 only (no .NET 6) |
 
-### Helper adaptations required for Tizen 6.0
+## Warm wake / first screen (vconf) and the cold-boot limit
 
-1. **Target runtime `netcoreapp3.1`** (the reference helper targeted .NET 6).
-2. **Home-operation reader:** `libaul`'s `aul_get_default_app` is absent. The app-operation-tv
-   library exports the matching reader `app_operation_get_current_app`, used instead.
-3. **`db/appfw/startup_appid` is absent** on this TV and is excluded from the managed keys, so
-   restore never recreates it.
-
-## Original Home state (captured baseline)
+For standby wake and the first screen, the stock values are overwritten with the launcher:
 
 ```
-Home operation (http://tizen.org/appcontrol/operation/main) = <samsung home webapp id>
-db/appfw/home_appid           = org.tizen.tv-viewer
-db/appfw/booting_appid_backup = org.tizen.tv-viewer
-db/first_screen/type          = com.samsung.tv.csfs
-db/appfw/overlay_home_appid   = com.samsung.tv.csfs
-db/appfw/startup_appid        = (absent)
-db/menu/smart_hub/ontvsetting/auto_start = 0
+db/appfw/home_appid           stock org.tizen.tv-viewer
+db/appfw/booting_appid_backup stock org.tizen.tv-viewer
+db/first_screen/type          stock com.samsung.tv.csfs
+db/appfw/overlay_home_appid   stock com.samsung.tv.csfs
 ```
 
-Read, write and exact-value restore of all of these were verified reliable (see the async-commit
-note below). The TV was returned to this exact state at the end.
+**Existing** system keys can be overwritten by the SDK user; **missing** ones cannot be created.
+`db/appfw/startup_appid` does not exist on this firmware, and writing it returns "Operation not
+permitted". That key is the cold-boot first screen, so **a cold boot still opens the TV viewer**;
+a public web-app launcher can own the Home key and warm wake, but not the cold-boot screen.
 
-## What was tried, and the physical result
+## What does NOT move the physical Home button (recorded to save repetition)
 
-| Keys set to the launcher | Physical Home button |
-| --- | --- |
-| Main Home operation + `db/appfw/home_appid` | Opens Samsung menu (no change) |
-| + `db/first_screen/type` | Still Samsung menu; Home now **exits** the app instead of overlaying |
-| + `db/appfw/overlay_home_appid` | Still Samsung menu (no change) |
+Setting any or all of the main app-control Home operation (`app_operation_set_current_app`),
+`db/appfw/home_appid`, `db/first_screen/type` and `db/appfw/overlay_home_appid` to the launcher
+left the physical Home button opening Samsung's menu. `util_is_appbooting_supported_webapp_byappid`
+returns 0 for every app id on this firmware (including Samsung's own Home apps); it is not the
+gate. The gate is the `key_filter` row above.
 
-Each applied state was confirmed in software by a settled, independent query before the physical
-check. None redirected the physical button.
+## Asynchronous-commit caveat (vconf)
 
-## The eligibility gate
+`vconf` writes commit asynchronously through this transport: a fresh process can read a stale
+value right after a write, and two writes in one process can leave only the first committed.
+Protocol: one logical operation per invocation, wait ~20 s, confirm with two spaced read-only
+queries. The `.app-context.db` edit is a file replacement and does not have this caveat.
 
-The function that governs app-booting support is
-`util_is_appbooting_supported_webapp_byappid()` in `libapp-context-manager-common.so`. Its
-string table references the metadata key `http://samsung.com/tv/metadata/appbootingsupport`
-(and `…/disable.appbooting`). Adding `appbootingsupport=true` to the launcher manifest (verified
-present in the installed package manifest) **did not** change the result, and the function
-returns **0 for every app id tested**, including `WykOS4t4F0.cmsWebApp` (the live Home operation
-holder), `org.tizen.tv-viewer` (`home_appid`) and `com.samsung.tv.csfs`. Eligibility therefore
-depends on a platform/partner condition a public app cannot satisfy here; it is not a manifest
-flag a self-signed app can set.
+## Reversal
 
-## Asynchronous-commit caveat
+Push the stock `.app-context.db` back (`home_db.py restore`), reset the four vconf keys to stock,
+uninstall the launcher if desired, then wall power-cycle. The stock DB and its SHA are kept in
+ignored `.local/native-home/au8000-home-db/`.
 
-`vconf` / operation writes commit asynchronously through this transport. A fresh process can read
-a stale value immediately after a write, and two writes in one process (apply-then-restore) can
-leave only the first committed. Reliable protocol: **one logical operation per invocation, wait
-~20 s, confirm with two spaced read-only queries.** Both apply and restore were verified to
-persist and hold this way; the TV was confirmed back at its original state at the end.
+## Known limits
 
-## Conclusion
-
-Native Home reassignment is **not achievable** on this TV with non-root, public-signed methods.
-The only untried route is a signed TPK that intercepts the `XF86Home` key event, which the owner
-had already found Samsung's own rule overrides on the UN58TU7020; it is not expected to behave
-differently here. The launcher remains fully usable as a manually opened app.
+- **Cold boot** (wall power) still opens the TV viewer — see above.
+- A **firmware update** can restore the stock DB and keys; re-apply afterward.
+- SMACK: the replacement file carries the directory label rather than the stock `_`; accepted by
+  the router on this firmware. Verify after any firmware change.
