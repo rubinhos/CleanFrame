@@ -5,6 +5,7 @@
   "description": "A personal, uncluttered home interface for Samsung The Frame.",
   "scripts": {
     "dev": "python3 scripts/preview.py",
+    "preview": "node scripts/preview.mjs",
     "check": "npm run lint && python3 scripts/check.py && npm run check:device",
     "package": "python3 scripts/package.py",
     "tv:info": "python3 scripts/tv.py info",
