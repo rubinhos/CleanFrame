@@ -189,8 +189,11 @@ identidade de `.local/signing.json` no momento do empacotamento. Não edite o id
 ## 6. Verificação
 
 Ambiente dividido nesta máquina Windows:
-- **Python** (check/package/tv) roda no **WSL** (distro `streamiso`), porque `package.py`
-  precisa de pty POSIX.
+- **Python** (check/package/tv) roda no **WSL** (distro `clean-tizen-home`, Ubuntu 24.04,
+  usuário `cleantv`; substitui a antiga `streamiso`), porque `package.py` precisa de pty POSIX.
+  Para recriar: `wsl --install Ubuntu-24.04 --name clean-tizen-home --no-launch` e criar um
+  usuário padrão em `/etc/wsl.conf`. Só a biblioteca padrão do Python é necessária. Os shims de
+  `.local/tizen-sdk-wsl/` chamam o `tizen.bat`/`sdb.exe` do Windows e não dependem do nome da distro.
 - **Node** (eslint, testes, Playwright) só existe no **Windows** (`C:\nvm4w\nodejs`);
   no WSL não há `node`. Por isso `npm run check` inteiro não roda num lugar só — rode as
   partes separadamente, do PowerShell:
@@ -198,9 +201,34 @@ Ambiente dividido nesta máquina Windows:
 ```
 npx eslint app                                   # = npm run lint
 node --test scripts/test-device.mjs              # = npm run check:device
-wsl.exe -d streamiso --cd /mnt/c/dev/CleanFrame -- python3 scripts/check.py
+wsl.exe -d clean-tizen-home --cd /mnt/c/dev/CleanFrame -- python3 scripts/check.py
 $env:CLEANFRAME_PUBLIC_FONTS='1'; node scripts/check-browser.mjs   # mudanças de interação
 ```
+
+### 6.1 Instalação guiada, Docker e backup (Node, no computador que fala com a TV)
+
+- `npm run tv:setup` (`scripts/tv-setup.mjs`): ambiente → TV → verificações → empacotar/assinar
+  → backup → instalar → abrir. Instala por caminho fixo (`/home/owner/share/tmp/sdk_tools/CleanTV.wgt`)
+  e esvazia o arquivo no fim, evitando o `download failed[116]` do `tv.py install`. Opções:
+  `--builder wsl|docker|native`, `--tv NOME`/`--host IP`, `--build-only` (sem TV),
+  `--no-package`, `--no-backup`, `--no-launch`, `--skip-checks`, `--yes`.
+- TVs com nome ficam em `.local/device.json` (`"tvs": [{"name", "host"}]`; `"host"` continua
+  sendo a padrão do `tv.py`; opcionais `"sdb"` e `"wsl"`).
+- **Docker** (`docker/tizen-cli`, imagem `cleantv-tizen-cli`, Tizen CLI 6.1 para Linux): só
+  empacota e assina. A pasta do perfil de certificados é montada somente leitura em `/certs`
+  (achada pelo `profiles.xml` do Tizen Studio ou `--certs`). Os `.pwd` do Windows são
+  criptografados para a máquina e não abrem no Linux, então a senha do certificado é digitada
+  (oculta) e entra no container por variável de ambiente; o entrypoint a grava num arquivo 600
+  no `/tmp` do container para o `password_file` do `package.py`. O `sdb` continua sendo o do host.
+- **Backup/restauração** (`scripts/tv-backup.mjs`; `npm run tv:backup`, `tv:restore [arquivo|latest]`,
+  `tv:backups`): abre o app em modo de depuração (`sdb shell 0 debug`), encaminha a porta do
+  inspetor e lê/grava as chaves `cleanframe.*` do `localStorage` pelo protocolo DevTools. O app
+  reinicia na TV. Arquivos em `.local/backups/<tv>/` (privados). A restauração salva antes o estado
+  atual (`…-antes-de-restaurar.json`), ignora o cache de clima e recarrega o app. Roda em Node no
+  Windows porque o WSL em modo NAT não alcança a porta que o `sdb.exe` encaminha.
+- Validado sem TV: fluxo WSL completo (`--build-only`); assinatura no Docker com certificado de
+  teste descartável; backup → alteração → restauração contra um Chromium local (`--cdp-port`).
+  Ainda falta confirmar na TV o `sdb shell 0 debug` (porta do inspetor) e a instalação guiada.
 
 Use `wsl.exe ... --cd` a partir do PowerShell, não do Git Bash (o Git Bash converte o
 caminho `/mnt/...` e quebra o comando). `check-browser.mjs` foi escrito para o upstream; partes

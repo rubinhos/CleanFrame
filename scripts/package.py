@@ -97,6 +97,9 @@ def main(root=ROOT):
     if sign(command, password):
         raise ValueError('SDK signing failed. Check the selected profile and password access in Certificate Manager.')
     signed = signed_dir / unsigned.name
+    # The CLI can exit 0 without output when it rejects a certificate password.
+    if not signed.is_file():
+        raise ValueError('SDK produced no signed widget. Check the certificate password and selected profile.')
     check_signed_widget(signed, settings['identity'])
     target = dist / 'CleanFrame.wgt'
     # Promote on the same filesystem so a failed copy preserves the last build.
