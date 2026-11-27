@@ -80,7 +80,11 @@ identidade de `.local/signing.json` no momento do empacotamento. Não edite o id
   hora). Voltar sai do modo de edição e depois fecha a tela.
 - DOM: `#chDock` / `#chShelf` / `#chTrack` / `#chPlate`, vidro próprio (`IMG.mat3`,
   `#matScrim3`). Constantes `CH_TW`, `CH_TH`, `CH_PITCH`, `CH_W`, `CH_GAP`.
-  `dockGeom()` centraliza grade + coluna juntas; `renderChannels()` usa a altura da grade e
+  `dockGeom()` faz grade + coluna ocuparem juntas a largura da tela (`DOCK_SPAN`, margens
+  `DOCK_M`); a grade é a que expande. `inGeom()` centraliza a barra de entradas ou, quando não
+  cabe, estica-a para `DOCK_SPAN` e rola. No preview, `?inputs=few|many|none|<n>` gera entradas
+  de exemplo (`scripts/preview-sources.js`). `tuneChannel` repete até 3 vezes antes do erro.
+  `renderChannels()` usa a altura da grade e
   rola um item por vez (`scroll.ch`), com esmaecimento em cima/embaixo.
 - Navegação (foco `zone: 'channels'`, índice `f.c`): Direita no último app de uma linha
   entra na coluna; Cima/Baixo escolhem; Cima no primeiro vai aos controles do topo (e Baixo

@@ -1,7 +1,7 @@
 /* Public Tizen application APIs. No Mac server, network address or credentials. */
 (function () {
   'use strict';
-  function T(s) { return window.FrameI18n ? window.FrameI18n.t(s) : s; }
+  function T(s, params) { return window.FrameI18n ? window.FrameI18n.t(s, params) : s; }
   var IDS = {
     stremio: 'IkWsFHtOY9.Stremio', netflix: 'org.tizen.netflix-app',
     disneyplus: 'MCmYXNxgcu.DisneyPlus', youtube: '9Ur5IzDKqV.TizenYouTube',
@@ -106,12 +106,30 @@
   /* Saved antenna channel: make the tuner the active source, find major.minor in the TV's
      channel list (so analog and digital numbering match the scan), tune it, then open the
      TV viewer. Needs the tv.channel privilege. No signal still opens the viewer. */
+  /* The tuner sometimes fails or stalls on the first request and works on the next, so a
+     failed attempt is retried a few times, after a short pause, before the error shows.
+     A cancel (another input or channel request) stops the retries; a channel missing from
+     the scan is final. */
+  var TUNE_TRIES = 3, TUNE_PAUSE = 700, TUNE_TIMEOUT = 8000;
   function tuneChannel(ch, done) {
-    var tvc = window.tizen && window.tizen.tvchannel, tvw = window.tizen && window.tizen.tvwindow, app = api(), finished = false;
+    var tvc = window.tizen && window.tizen.tvchannel, app = api(), attempt = 0, pause = 0;
     if (!ch || typeof ch.major !== 'number' || !isFinite(ch.major)) { done({ message: T('This channel is not available.') }); return; }
     if (!tvc || typeof tvc.tune !== 'function' || !app || typeof app.launch !== 'function') { unavailable(done); return; }
+    function run() {
+      attempt++;
+      tuneOnce(ch, function (err, value) {
+        if (!err || err.cancelled || err.final || attempt >= TUNE_TRIES) { done(err, value); return; }
+        function stop() { clearTimeout(pause); if (sourceCancel === stop) sourceCancel = null; done({ message: T('Channel change cancelled.'), cancelled: true }); }
+        sourceCancel = stop;
+        pause = setTimeout(function () { if (sourceCancel === stop) sourceCancel = null; run(); }, TUNE_PAUSE * attempt);
+      });
+    }
+    run();
+  }
+  function tuneOnce(ch, done) {
+    var tvc = window.tizen.tvchannel, tvw = window.tizen.tvwindow, app = api(), finished = false;
     cancelSource();
-    var timer = setTimeout(function () { finish({ message: T('The TV did not respond. Please try again.') }); }, 12000);
+    var timer = setTimeout(function () { finish({ message: T('The TV did not respond. Please try again.') }); }, TUNE_TIMEOUT);
     function finish(err, value) {
       if (finished) return;
       finished = true; clearTimeout(timer);
@@ -148,7 +166,7 @@
             if (c && c.major === ch.major && (c.minor === ch.minor || (!ch.minor && !(c.minor > 0)))) { hit = c; return true; }
             return false;
           });
-          if (!hit) { finish({ message: T('Channel {n} was not found.', { n: ch.num || String(ch.major) }), detail: T('Run a channel scan in the TV settings, then try again.') }); return; }
+          if (!hit) { finish({ message: T('Channel {n} was not found.', { n: ch.num || String(ch.major) }), detail: T('Run a channel scan in the TV settings, then try again.'), final: true }); return; }
           tune(hit.major, hit.minor);
         }, function () { tune(ch.major, ch.minor || 0); }, 'ALL', 0, 1000);
       } catch (error) { tune(ch.major, ch.minor || 0); }

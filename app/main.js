@@ -10,12 +10,14 @@
   // Extra bundled marks that saved native apps may use (see device.js EXTRA_BRANDS).
   var MARK_BRANDS = ['hbomax', 'spotify', 'tubi', 'crunchyroll', 'airplay', 'globoplay', 'xbox', 'streamiso', 'internet', 'emanual', 'devicecare', 'mercadoplay', 'twitch', 'alexa', 'security', 'camera'];
   var CAP = 64, SCRIM_Y = 560, DOCK_COLS = 5, DOCK_ROWS = 2, DOCK_ROW_GAP = 16;
+  // Dock layout spans the stage between DOCK_M side margins (DOCK_SPAN wide).
+  var DOCK_M = 48, DOCK_SPAN = 1920 - 2 * DOCK_M;
   // HDMI inputs dock below the app grid: tile size, dock height and gap above it.
-  var IN_TW = 336, IN_TH = 96, IN_PITCH = 344, IN_H = IN_TH + 32, IN_GAP = 24;
-  // TVs with more sources narrow the tiles down to IN_MIN_TW, then scroll within IN_MAXW.
-  var IN_MAXW = 1728, IN_MIN_TW = 264;
-  // Saved antenna channels: one column to the right of the app grid, scrolling vertically.
-  var CH_TW = 168, CH_TH = 104, CH_PITCH = 112, CH_W = CH_TW + 32, CH_GAP = 24;
+  var IN_TH = 96, IN_PITCH = 344, IN_H = IN_TH + 32, IN_GAP = 16;
+  // More sources stretch the bar to DOCK_SPAN, narrow the tiles to IN_MIN_TW, then scroll.
+  var IN_MIN_TW = 264;
+  // Saved antenna channels: one column beside the app grid, scrolling vertically.
+  var CH_TW = 168, CH_TH = 104, CH_PITCH = 112, CH_W = CH_TW + 32, CH_GAP = 16;
   // Saved channels live in the preferences (c.channels); channels.js is the first-run list.
   // Each entry: { num, major, minor, name, icon }; minor 0 = analog or no subchannel.
   var CH_MAX = 64, CH_ICONS = [['globo', /globo/i], ['record', /record/i], ['sbt', /\bsbt\b/i], ['band', /\bband\b|bandeirantes/i]];
@@ -546,9 +548,10 @@
   function message(title, line, note) {
     push({ id: 'message', msg: 'error', content: { title: title, line: line, note: note || '', actions: [['back', T('Back')]] }, f: { b: 0 } });
   }
-  function perform(title, run) {
+  // limit: how long the remote stays locked out if the device never answers.
+  function perform(title, run, limit) {
     if (busy) return;
-    busy = true; busyTimer = setTimeout(release, 10000);
+    busy = true; busyTimer = setTimeout(release, limit || 10000);
     run(function (err) {
       release();
       if (err && !err.cancelled) message(title, err.message || T('The TV could not open this screen.'), err.detail || '');
@@ -614,7 +617,8 @@
   }
   function tuneChannel(ch) {
     if (!ch) return;
-    perform(ch.name, function (done) { FrameDevice.tuneChannel(ch, done); });
+    // Tuning retries a failed attempt (device.js), so it may take up to ~30 s.
+    perform(ch.name, function (done) { FrameDevice.tuneChannel(ch, done); }, 30000);
   }
   /* ---------- Weather caption and effects ---------- */
   // WMO weather codes (Open-Meteo) grouped into the effects this TV can afford.
@@ -1440,7 +1444,7 @@
   var photoMode = null, photoTransitionToken = 0;
   var sheetEl = $('sheet'), sheetView = $('sheetView');
   var IMG = { photo: $('photo'), mat: $('matImg'), mat2: $('matImg2'), mat3: $('matImg3'), bg: $('sheetBg'), field: $('phFieldImg'), fieldAlt: $('phFieldImgAlt'), utility: $('utFieldImg'), utilityAlt: $('utFieldImgAlt') };
-  var sheetKey = '', slotEls = {}, dockAnchorCenter = 960;
+  var sheetKey = '', slotEls = {}, dockAnchorCenter = 960, dockNameY = 932;
   var appliedPalette = null, appliedPhoto = null, appliedFont = null, appliedFontMetrics = null;
 
   /* Curated locked palettes keep the existing rendering path exactly. */
@@ -1601,28 +1605,35 @@
       x = 280; placement = phFields[photoPlateIndex]._placement;
       y = placement.y + placement.height / 2 - 24;
     } else {
-      x = clamp(dockAnchorCenter - width / 2, 140, 1780 - width); y = 932;
+      x = clamp(dockAnchorCenter - width / 2, 140, 1780 - width); y = dockNameY;
     }
     appFocusName.style.left = x + 'px'; appFocusName.style.top = (y + fontShift('primary', S.c.layout === 'list' ? 40 : 36)) + 'px';
     appFocusName.className = 'app-focus-name is-on';
   }
 
-  /* Grid dock: up to five columns and three visible rows, scrolling a row at a time. */
+  /* Grid dock: up to five columns and two visible rows, scrolling a row at a time.
+     The channel column and the app grid together span DOCK_SPAN: the column keeps its
+     width at one side and the grid takes the rest, its tiles widened to five columns
+     (fewer apps centre within it). */
   function dockGeom(n) {
     var m = DOCK_MODES[S.c.apps], cols = Math.max(1, Math.min(DOCK_COLS, n)), total = Math.max(1, Math.ceil(Math.max(n, 1) / cols));
-    var rows = Math.min(DOCK_ROWS, total), rp = m.th + DOCK_ROW_GAP, shelfW = cols * m.pitch - 8, w = shelfW + 32, h = rows * rp - DOCK_ROW_GAP + 32;
-    if (n < 0) { w = 912; shelfW = 880; rows = total = 1; h = m.th + 32; }
-    // The app dock and channel column form a horizontal pair; appdock aligns it, chdock
-    // picks the channel's side, indock puts the inputs bar above or below the pair.
-    var hasIn = S.inputs.length > 0, M = 40, chLeft = S.c.chdock === 'left';
-    // Channel column pinned to a side; the app dock centres in the remaining width.
-    var chx = chLeft ? M : 1920 - M - CH_W;
-    var regL = chLeft ? M + CH_W + CH_GAP : M, regR = chLeft ? 1920 - M : 1920 - M - CH_W - CH_GAP;
-    var x = clamp(Math.round(regL + (regR - regL - w) / 2), M, Math.max(M, 1920 - M - w));
-    var above = S.c.indock === 'above' && hasIn;
-    var pairBottom = (hasIn && !above) ? 908 - IN_H - IN_GAP : 908;
-    var iny = above ? (pairBottom - h) - IN_GAP - IN_H : 908 - IN_H;
-    return { x: x, y: pairBottom - h, chx: chx, iny: iny, h: h, w: w, shelf: shelfW, cols: cols, rows: rows, total: total, rp: rp, vis: cols, broad: false, empty: n < 0, tw: m.tw, th: m.th, pitch: m.pitch };
+    var rows = Math.min(DOCK_ROWS, total), rp = m.th + DOCK_ROW_GAP, h = rows * rp - DOCK_ROW_GAP + 32;
+    var chLeft = S.c.chdock === 'left', w = DOCK_SPAN - CH_W - CH_GAP, room = w - 32;
+    var pitch = Math.floor((room + 8) / DOCK_COLS), shelfW = cols * pitch - 8, ox = Math.floor((room - shelfW) / 2);
+    if (n < 0) { rows = total = 1; h = m.th + 32; shelfW = room; ox = 0; }
+    var hasIn = S.inputs.length > 0, above = S.c.indock === 'above' && hasIn;
+    var pairBottom = hasIn && !above ? 908 - IN_H - IN_GAP : 908;
+    return { x: chLeft ? DOCK_M + CH_W + CH_GAP : DOCK_M, y: pairBottom - h, chx: chLeft ? DOCK_M : 1920 - DOCK_M - CH_W,
+      iny: above ? pairBottom - h - IN_GAP - IN_H : 908 - IN_H, h: h, w: w, shelf: shelfW, ox: ox, cols: cols, rows: rows, total: total, rp: rp,
+      vis: cols, broad: false, empty: n < 0, tw: pitch - 8, th: m.th, pitch: pitch };
+  }
+  /* Inputs bar: natural tiles, centred on the stage while they fit. More sources span
+     DOCK_SPAN, narrowing the tiles down to IN_MIN_TW, then scroll a tile at a time. */
+  function inGeom(n) {
+    var room = DOCK_SPAN - 32 + 8, pitch = IN_PITCH, vis = n, w, full = n * IN_PITCH > room;
+    if (full) { vis = Math.max(1, Math.min(n, Math.floor(room / (IN_MIN_TW + 8)))); pitch = Math.floor(room / vis); }
+    w = full ? DOCK_SPAN : vis * pitch - 8 + 32;
+    return { pitch: pitch, tw: pitch - 8, vis: vis, w: w, x: full ? DOCK_M : Math.round((1920 - w) / 2), ox: full ? Math.floor((room - vis * pitch) / 2) : 0 };
   }
   /* Returns the vertical offset: the window moves one row when focus passes an edge. */
   function dockOffset(n, i, g) {
@@ -1643,21 +1654,18 @@
   /* Horizontal inputs dock: same glass material as the app grid, registered to the stage. */
   function renderInputs(hs, g) {
     var list = S.inputs, n = list.length, w, x, y, focus = hs.zone === 'inputs', at = clamp(hs.n || 0, 0, Math.max(0, n - 1));
-    var room = IN_MAXW - 32 + 8, pitch = IN_PITCH, tw = IN_TW, vis = n, first = 0;
     if (!n || hs.mode === 'arrange') { inDock.className = 'dock inputs-dock is-off'; return; }
-    // Narrow the tiles to fit; past the minimum width, scroll a tile at a time.
-    if (n * IN_PITCH > room) { tw = Math.max(IN_MIN_TW, Math.floor(room / n) - 8); pitch = tw + 8; }
-    if (n * pitch > room) {
-      vis = Math.max(1, Math.floor(room / pitch));
+    var ig = inGeom(n), pitch = ig.pitch, tw = ig.tw, vis = ig.vis, first = 0;
+    if (vis < n) {
       first = clamp(scroll.inp, 0, n - vis);
       if (at < first) first = at;
       if (at > first + vis - 1) first = at - vis + 1;
     }
     scroll.inp = first;
-    w = vis * pitch - 8 + 32; x = Math.round((1920 - w) / 2); y = g ? g.iny : 908 - IN_H;
+    w = ig.w; x = ig.x; y = g ? g.iny : 908 - IN_H;
     inDock.className = 'dock inputs-dock';
     inDock.style.left = x + 'px'; inDock.style.top = y + 'px'; inDock.style.width = w + 'px'; inDock.style.height = IN_H + 'px';
-    inShelf.style.width = (vis * pitch - 8) + 'px';
+    inShelf.style.width = (vis * pitch - 8) + 'px'; inShelf.style.left = (16 + ig.ox) + 'px';
     inShelf.className = 'shelf' + (first > 0 ? ' fade-l' : '') + (first + vis < n ? ' fade-r' : '');
     inTrack.style.transform = 'translate3d(' + (-first * pitch) + 'px,0,0)';
     inDock.style.setProperty('--tile-w', tw + 'px'); inDock.style.setProperty('--tile-h', IN_TH + 'px'); inDock.style.setProperty('--dock-h', IN_H + 'px');
@@ -1726,12 +1734,14 @@
     dock.style.left = g.x + 'px'; dock.style.top = g.y + 'px'; dock.style.width = g.w + 'px'; dock.style.height = g.h + 'px';
     dock.style.setProperty('--tile-w', g.tw + 'px'); dock.style.setProperty('--tile-h', g.th + 'px'); dock.style.setProperty('--dock-h', g.h + 'px');
     dock.style.setProperty('--nudge-top', ((g.th - 48) / 2) + 'px');
-    dockAnchorCenter = g.x + 16 + (anchor % g.cols) * g.pitch + g.tw / 2;
+    dockAnchorCenter = g.x + 16 + g.ox + (anchor % g.cols) * g.pitch + g.tw / 2;
+    // An inputs bar below the grid takes the name's usual place, so it sits above the grid.
+    dockNameY = S.inputs.length && S.c.indock !== 'above' ? g.y - 56 : 932;
     IMG.mat.style.left = (-g.x) + 'px'; IMG.mat.style.top = (-g.y) + 'px';
     IMG.mat.style.transformOrigin = '960px ' + (g.y + g.h / 2) + 'px';
     matScrim.style.left = (-g.x) + 'px'; matScrim.style.top = (SCRIM_Y - g.y) + 'px';
     matScrim.style.transformOrigin = '960px ' + (g.y + g.h / 2 - SCRIM_Y) + 'px';
-    shelf.style.width = g.shelf + 'px';
+    shelf.style.width = g.shelf + 'px'; shelf.style.left = (16 + g.ox) + 'px';
     shelf.className = 'shelf';
     track.style.height = (g.total * g.rp + 16) + 'px';
 
@@ -1753,14 +1763,15 @@
     plate.className = 'plate' + (!n || empty || hs.zone === null ? '' : hs.lifted ? ' on-lift' : tileFocus ? ' on-focus' : tileSel ? ' on-sel' : '');
     plate.style.transform = 'translate3d(' + ((anchor % g.cols) * g.pitch) + 'px,' + (Math.floor(anchor / g.cols) * g.rp) + 'px,0)';
 
-    // Up/down cues sit to the right of the grid when rows are hidden above or below.
-    cueL.style.left = cueR.style.left = (g.x + g.w + 24) + 'px';
-    cueL.style.top = (g.y + 16) + 'px'; cueR.style.top = (g.y + g.h - 64) + 'px';
+    // Up/down cues straddle the grid's top and bottom edges when rows are hidden; the
+    // grid reaches the stage margin, so there is no free space beside it.
+    cueL.style.left = cueR.style.left = (g.x + g.w / 2 - 24) + 'px';
+    cueL.style.top = (g.y - 24) + 'px'; cueR.style.top = (g.y + g.h - 24) + 'px';
     cueL.style.transform = cueR.style.transform = 'rotate(90deg)';
     cueL.className = 'cue' + (!empty && scroll.first > 0 ? ' is-on' : '');
     cueR.className = 'cue' + (!empty && scroll.first + g.rows < g.total ? ' is-on' : '');
 
-    ax = g.x + 16 + (anchor % g.cols) * g.pitch;
+    ax = g.x + 16 + g.ox + (anchor % g.cols) * g.pitch;
     if (hs.mode === 'arrange' && !hs.lifted && (hs.zone === 'tiles' || hs.zone === 'act') && focusItem && focusItem.kind !== 'add') {
       s = hs.arr.slots[anchor];
       label = (s.removed ? 'Restore ' : 'Remove ') + app(s.id).name; width = actionWidth(label);

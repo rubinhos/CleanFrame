@@ -556,6 +556,10 @@ html,body{width:100%;height:100%;overflow:hidden;background:#000}
 /* Saved display choices alter content, not app identity or editing state. */
 .stage.is-reflow *{transition:none!important;animation:none!important}
 .dock .tile,.dock .plate{width:var(--tile-w);height:var(--tile-h)}
+/* App grid tiles widen with the stage-wide dock; marks stay centred (box 120/136/56px). */
+#dock .tile .mark{left:50%;margin-left:-60px}
+.a-icons #dock .tile .mark{margin-left:-68px}
+#dock .tile .add{left:50%;margin-left:-28px}
 .dock .track{height:var(--dock-h)}
 .dock .nudge{top:var(--nudge-top)}
 .a-text .tile .label{left:12px;right:12px;top:28px;font-size:40px;line-height:48px;font-weight:600}
