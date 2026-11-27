@@ -797,6 +797,9 @@
   /* ---------- Home (browse) ---------- */
   V.home = {
     key: function (t, k) {
+      // Back on the Home screen always leaves the app; it never retraces between the
+      // controls, app grid, channel column and inputs dock.
+      if (k === 'back') { FrameDevice.hide(); return; }
       var f = t.f, h = S.c.home, U = utils(), x = axes(), i = ensureSel();
       var chLeft = S.c.chdock === 'left', inAbove = S.c.indock === 'above';
       if (S.c.layout === 'list') { listHomeKey(t, k, i, U); return; }
@@ -804,7 +807,7 @@
         f.u = clamp(f.u, 0, U.length - 1);
         if (k === x.prev && f.u > 0) f.u--;
         else if (k === x.next && f.u < U.length - 1) f.u++;
-        else if (k === x.inn || k === 'back') { f.zone = f.uf === 'channels' ? 'channels' : 'apps'; f.uf = null; }
+        else if (k === x.inn) { f.zone = f.uf === 'channels' ? 'channels' : 'apps'; f.uf = null; }
         else if (k === 'ok') { S.lastUtil = f.u; utilAction(U[f.u]); return; }
         S.lastUtil = f.u;
         return;
@@ -817,7 +820,7 @@
         f.c = clamp(f.c || 0, 0, cn - 1);
         if (k === 'up') { if (f.c > 0) f.c--; else { f.zone = 'util'; f.uf = 'channels'; f.u = clamp(S.lastUtil, 0, U.length - 1); } }
         else if (k === 'down') { if (f.c < cn - 1) f.c++; }
-        else if (k === 'back' || k === (chLeft ? 'right' : 'left')) f.zone = 'apps';
+        else if (k === (chLeft ? 'right' : 'left')) f.zone = 'apps';
         else if (k === 'ok') { if (col[f.c].kind === 'all') openChannels(); else tuneChannel(col[f.c]); }
         return;
       }
@@ -829,7 +832,7 @@
         if (k === 'left' && f.n > 0) f.n--;
         else if (k === 'right' && f.n < m - 1) f.n++;
         else if (k === 'ok') switchInput(S.inputs[f.n]);
-        else if (k === 'back' || k === (inAbove ? 'down' : 'up')) f.zone = 'apps';
+        else if (k === (inAbove ? 'down' : 'up')) f.zone = 'apps';
         else if (inAbove && k === 'up') { f.zone = 'util'; f.u = clamp(S.lastUtil, 0, U.length - 1); }
         return;
       }
@@ -837,8 +840,7 @@
       var cols = dockGeom(h.length).cols, col = i % cols;
       function toInputs() { if (S.inputs.length) { f.zone = 'inputs'; f.n = clamp(f.n || 0, 0, S.inputs.length - 1); } }
       function toChannels() { f.zone = 'channels'; f.c = clamp(f.c || 0, 0, colItems().length - 1); }
-      if (k === 'back') FrameDevice.hide();
-      else if (!h.length) {
+      if (!h.length) {
         if (k === 'up') { if (inAbove) toInputs(); else { f.zone = 'util'; f.u = clamp(S.lastUtil, 0, U.length - 1); } }
         else if (k === 'down') { if (!inAbove) toInputs(); }
         else if (k === (chLeft ? 'left' : 'right')) toChannels();
@@ -868,7 +870,7 @@
       f.u = clamp(f.u, 0, U.length - 1);
       if (k === 'up' && f.u > 0) f.u--;
       else if (k === 'down' && f.u < U.length - 1) f.u++;
-      else if (k === 'left' || k === 'back') f.zone = 'apps';
+      else if (k === 'left') f.zone = 'apps';
       else if (k === 'ok') { S.lastUtil = f.u; utilAction(U[f.u]); return; }
       S.lastUtil = f.u;
       return;
@@ -877,7 +879,6 @@
     if (k === 'up' && i > 0) setSel(h[i - 1]);
     else if (k === 'right') { f.zone = 'util'; f.u = clamp(S.lastUtil, 0, U.length - 1); }
     else if (k === 'down' && i < h.length - 1) setSel(h[i + 1]);
-    else if (k === 'back') FrameDevice.hide();
     else if (k === 'ok') { if (h.length) launch(S.sel); else addAppsRoute(); }
   }
 
@@ -2494,4 +2495,14 @@
   norm(); render(); fit(); focusStage(); updateClock(); syncRotation();
   // Discover installed apps for Home; hidden startup waits for visibility instead.
   if (!document.hidden) { refreshCatalog(); refreshHomeInputs(); refreshWeather(); }
+
+  // Pressing the physical Home key while CleanTV is already open relaunches it; Samsung's
+  // WRT delivers that as an 'appcontrol' event on window. Treat it exactly like Back: close
+  // the current panel, or leave the app when already at the Home root. A short guard keeps
+  // the initial launch from triggering it.
+  var relaunchReady = false;
+  setTimeout(function () { relaunchReady = true; }, 1500);
+  try {
+    window.addEventListener('appcontrol', function () { if (relaunchReady) press('back'); });
+  } catch (err) { /* not Tizen (browser preview) */ }
 })();
