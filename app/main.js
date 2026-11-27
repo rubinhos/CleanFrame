@@ -1627,13 +1627,13 @@
       iny: above ? pairBottom - h - IN_GAP - IN_H : 908 - IN_H, h: h, w: w, shelf: shelfW, ox: ox, cols: cols, rows: rows, total: total, rp: rp,
       vis: cols, broad: false, empty: n < 0, tw: pitch - 8, th: m.th, pitch: pitch };
   }
-  /* Inputs bar: natural tiles, centred on the stage while they fit. More sources span
-     DOCK_SPAN, narrowing the tiles down to IN_MIN_TW, then scroll a tile at a time. */
+  /* Inputs bar: always the full pair width (DOCK_SPAN), so every dock shares its left and
+     right edges. Natural tiles centre inside while they fit; more sources narrow the tiles
+     to IN_MIN_TW, then scroll a tile at a time. */
   function inGeom(n) {
-    var room = DOCK_SPAN - 32 + 8, pitch = IN_PITCH, vis = n, w, full = n * IN_PITCH > room;
-    if (full) { vis = Math.max(1, Math.min(n, Math.floor(room / (IN_MIN_TW + 8)))); pitch = Math.floor(room / vis); }
-    w = full ? DOCK_SPAN : vis * pitch - 8 + 32;
-    return { pitch: pitch, tw: pitch - 8, vis: vis, w: w, x: full ? DOCK_M : Math.round((1920 - w) / 2), ox: full ? Math.floor((room - vis * pitch) / 2) : 0 };
+    var room = DOCK_SPAN - 32, pitch = IN_PITCH, vis = n;
+    if (n * pitch - 8 > room) { vis = Math.max(1, Math.min(n, Math.floor((room + 8) / (IN_MIN_TW + 8)))); pitch = Math.floor((room + 8) / vis); }
+    return { pitch: pitch, tw: pitch - 8, vis: vis, w: DOCK_SPAN, x: DOCK_M, ox: Math.floor((room - (vis * pitch - 8)) / 2) };
   }
   /* Returns the vertical offset: the window moves one row when focus passes an edge. */
   function dockOffset(n, i, g) {
