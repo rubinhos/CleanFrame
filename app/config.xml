@@ -7,6 +7,10 @@
   <icon src="icon.png"/>
   <feature name="http://tizen.org/feature/screen.size.normal.1080.1920"/>
   <tizen:profile name="tv-samsung"/>
+  <!-- Overlay/transparent support (as Samsung's own Home uses) so the launcher renders as a
+       popover over live content. Honoured on Tizen 6.0 AU8000; harmless where unsupported. -->
+  <tizen:metadata key="http://samsung.com/tv/metadata/transparent.support" value="true"/>
+  <tizen:metadata key="http://samsung.com/tv/metadata/partial.overlay.support" value="true"/>
   <tizen:privilege name="http://tizen.org/privilege/application.launch"/>
   <tizen:privilege name="http://tizen.org/privilege/application.info"/>
   <tizen:privilege name="http://tizen.org/privilege/tv.inputdevice"/>
@@ -18,5 +22,7 @@
   <access origin="https://ipwho.is" subdomains="false"/>
   <access origin="https://ipapi.co" subdomains="false"/>
   <access origin="https://api.open-meteo.com" subdomains="false"/>
-  <tizen:setting screen-orientation="landscape" context-menu="disable" background-support="disable" encryption="disable" install-location="auto" hwkey-event="enable"/>
+  <!-- background-support=enable keeps the launcher resident so the physical Home key
+       foregrounds it instantly instead of a cold webview start. -->
+  <tizen:setting screen-orientation="landscape" context-menu="disable" background-support="enable" encryption="disable" install-location="auto" hwkey-event="enable"/>
 </widget>

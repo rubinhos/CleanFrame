@@ -203,6 +203,8 @@
     } catch (err) { finish(failure(err)); }
   }
   function home(done) { launchApp('com.samsung.tv.csfs', done); }
+  // Dismiss the overlay: background the resident app, revealing whatever is behind it.
+  function hide() { try { var a = api(); if (a && a.getCurrentApplication) a.getCurrentApplication().hide(); } catch (err) { /* preview or unsupported */ } }
   // Tizen 5.5 TVs ignore launches of coba.setting from web apps; org.tizen.menu opens the same settings.
   function settings(done) { launchApp(hasApp('org.tizen.menu') ? 'org.tizen.menu' : 'com.samsung.tv.coba.setting', done); }
   function apps(done) {
@@ -227,5 +229,5 @@
       }, function (err) { finish(failure(err)); });
     } catch (err) { finish(failure(err)); }
   }
-  window.FrameDevice = { hasApp: hasApp, launch: launch, launchApp: launchApp, art: art, home: home, settings: settings, apps: apps, sources: sources, setSource: setSource, cancelSource: cancelSource, tuneChannel: tuneChannel, channels: channels };
+  window.FrameDevice = { hasApp: hasApp, launch: launch, launchApp: launchApp, art: art, home: home, hide: hide, settings: settings, apps: apps, sources: sources, setSource: setSource, cancelSource: cancelSource, tuneChannel: tuneChannel, channels: channels };
 }());

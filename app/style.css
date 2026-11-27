@@ -709,3 +709,25 @@ html,body{width:100%;height:100%;overflow:hidden;background:#000}
 .appearance-rows:not(.wallpaper-picker){height:696px;overflow:hidden}
 .appearance-scroll{transition:transform var(--t) var(--ease)}
 .appearance-rows.is-scrollable{-webkit-mask-image:linear-gradient(to bottom,#000 calc(100% - 64px),transparent);mask-image:linear-gradient(to bottom,#000 calc(100% - 64px),transparent)}
+
+/* ---------- Overlay popover: transparent over live content ---------- */
+/* The app runs as a transparent overlay (Samsung transparent.support metadata). Glass
+   surfaces use --ov (the chosen panel colour + opacity, set per render) instead of the
+   wallpaper material, so live content shows through the gaps. */
+html,body,.stage,.scene{background:transparent}
+.bg{display:none}
+.mat{display:block !important;background:var(--ov,rgba(6,10,14,.3)) !important}
+.mat-img,.mat-scrim,.mat-veil{display:none !important}
+.ph-field{background:var(--ov,rgba(6,10,14,.3)) !important}
+.ph-field-img,.ph-veil{display:none !important}
+.ut-lens{display:none !important}
+/* One standard for top controls and docks: --ov panel background, solid inverted focus. */
+.quiet-utils .u{background:var(--ov,rgba(6,10,14,.3));border-radius:30px}
+.quiet-utils .u,.quiet-utils .u.is-idle,.quiet-utils.is-awake .u{opacity:1}
+.quiet-utils .u.is-focus{background:var(--solid);color:var(--solid-ink)}
+.quiet-utils .u.is-focus .ut-underlay{stroke:transparent}
+.dock .plate.on-focus,.dock .plate.on-lift{background:var(--solid) !important;box-shadow:none !important}
+.dock .tile.is-focus{color:var(--solid-ink)}
+/* Same solid inverted focus on the sheet screens (All apps, All channels, Settings, editors). */
+.gt.is-focus,.sc.is-focus,.er-name.is-focus,.eo.is-focus,.s-head .btn.is-focus,.setting-choice.is-focus{background:var(--solid) !important;color:var(--solid-ink) !important;box-shadow:none !important}
+.s-head .btn.is-focus::before,.f-glass .header-utils .u.is-focus::before{display:none !important}

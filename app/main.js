@@ -81,10 +81,10 @@
     newsreader: { name: 'Newsreader', family: 'Study Newsreader', display: 400, ui: 400, clock: 400 }
   };
   var PRIVATE_FONTS = window.CleanFramePrivateFontIDs || [], fontMetrics = {}, unavailableFonts = {}, widthCache = {}, fontRevision = 0, fontsReady = false;
-  var LOOK_VALUES = { bg: ['dark', 'light', 'photo'], layout: ['list', 'dock'], apps: ['icons', 'both', 'text'], font: Object.keys(FONTS).filter(function (id) { return id === 'manrope' || PRIVATE_FONTS.indexOf(id) >= 0; }), controls: ['icons', 'both', 'text'], focus: ['type', 'glass'], material: ['soft', 'frost', 'tint'] };
+  var LOOK_VALUES = { bg: ['dark', 'light'], opacity: ['25', '50', '75', '100'], chdock: ['right', 'left'], indock: ['below', 'above'], layout: ['list', 'dock'], apps: ['icons', 'both', 'text'], font: Object.keys(FONTS).filter(function (id) { return id === 'manrope' || PRIVATE_FONTS.indexOf(id) >= 0; }), controls: ['icons', 'both', 'text'], focus: ['type', 'glass'], material: ['soft', 'frost', 'tint'] };
   var LOOK_NAMES = { bg: T('Background'), layout: T('Layout'), apps: T('Apps'), font: T('Font'), controls: T('Home controls'), focus: T('Focus'), material: T('Material') };
-  var VALUE_NAMES = { custom: T('Custom order'), az: T('Name A–Z'), za: T('Name Z–A'), recent: T('Recently used'), oldest: T('Least used'), on: T('On'), off: T('Off'), dark: T('Dark'), light: T('Light'), photo: T('Photo'), list: T('List'), dock: T('Dock'), type: T('Type'), glass: T('Glass'), soft: T('Soft'), frost: T('Frost'), tint: T('Clear tint'), icons: T('Icons'), both: T('Icons and text'), text: T('Text') };
-  var UTIL = { home: [T('Samsung Home'), 'home'], tv: [T('TV settings'), 'tv'], art: [T('Art Mode'), 'art'], apps: [T('All apps'), 'apps'], arrange: [T('Arrange'), 'arrange'], settings: [T('Settings'), 'settings'] };
+  var VALUE_NAMES = { custom: T('Custom order'), az: T('Name A–Z'), za: T('Name Z–A'), recent: T('Recently used'), oldest: T('Least used'), on: T('On'), off: T('Off'), dark: T('Dark'), light: T('Light'), photo: T('Photo'), list: T('List'), dock: T('Dock'), type: T('Type'), glass: T('Glass'), soft: T('Soft'), frost: T('Frost'), tint: T('Clear tint'), icons: T('Icons'), both: T('Icons and text'), text: T('Text'), left: T('Left'), right: T('Right'), center: T('Center'), above: T('Above'), below: T('Below') };
+  var UTIL = { home: [T('Home'), 'home'], tv: [T('Controls'), 'controls'], art: [T('Art Mode'), 'art'], apps: [T('All apps'), 'apps'], channels: [T('All channels'), 'channels'], arrange: [T('Arrange'), 'arrange'], settings: [T('Settings'), 'settings'] };
   var MSG = {
     leave: { title: T('Leave Home?'), line: T('Open Samsung Home?'), note: '', actions: [['stay', T('Stay')], ['samsung', T('Samsung Home')]] }
   };
@@ -103,6 +103,8 @@
     down: '<path d="m5 8.5 7 7 7-7"/>',
     updown: '<path d="m7.5 9.5 4.5-4.5 4.5 4.5M7.5 14.5l4.5 4.5 4.5-4.5"/>',
     tv: '<rect x="3" y="4.5" width="18" height="12" rx="2"/><path d="M8.5 20h7"/>',
+    channels: '<rect x="3.5" y="4.5" width="17" height="15" rx="2"/><path d="M8 9h9M8 12h9M8 15h6"/>',
+    controls: '<path d="M4 8h16M4 16h16"/><circle cx="9" cy="8" r="2.6"/><circle cx="15" cy="16" r="2.6"/>',
     input: '<path d="M3.5 8h17v5.5L18 17H6l-2.5-3.5Z"/><path d="M8 11.5h8"/>',
     'wx-sun': '<circle cx="12" cy="12" r="4"/><path d="M12 2.5v2M12 19.5v2M2.5 12h2M19.5 12h2M5.3 5.3l1.4 1.4M17.3 17.3l1.4 1.4M5.3 18.7l1.4-1.4M17.3 6.7l1.4-1.4"/>',
     'wx-moon': '<path d="M20 14.5A8 8 0 1 1 9.5 4a6.5 6.5 0 0 0 10.5 10.5Z"/>',
@@ -133,7 +135,7 @@
     for (var i = 0; i < list.length; i++) if (list[i].toLowerCase() === v) return list[i];
     return fallback;
   }
-  function lookOf(c) { return { bg: c.bg, wall: c.wall, layout: c.layout, apps: c.apps, font: c.font, controls: c.controls, focus: c.focus, material: c.material }; }
+  function lookOf(c) { return { bg: c.bg, opacity: c.opacity, chdock: c.chdock, indock: c.indock, wall: c.wall, layout: c.layout, apps: c.apps, font: c.font, controls: c.controls, focus: c.focus, material: c.material }; }
   function materialApplies(c) { c = c || S.c; return c.bg === 'photo' && (c.layout === 'dock' || c.focus === 'glass'); }
 
   /* ---------- Helpers ---------- */
@@ -401,7 +403,9 @@
       seen: seen, wfx: s.wfx === 'off' ? 'off' : 'on',
       sort: SORT_IDS.indexOf(s.sort) >= 0 ? s.sort : 'custom', used: cleanUsed(s.used), inputs: cleanInputMap(s.inputs),
       channels: cleanChannels(Array.isArray(s.channels) ? s.channels : window.CleanTVChannels),
-      bg: pick(modern.bg, LOOK_VALUES.bg, legacyList ? 'dark' : 'photo'), layout: pick(modern.layout, LOOK_VALUES.layout, legacyList ? 'list' : 'dock'),
+      bg: pick(modern.bg, LOOK_VALUES.bg, 'dark'), opacity: pick(modern.opacity, LOOK_VALUES.opacity, '50'),
+      chdock: pick(modern.chdock, LOOK_VALUES.chdock, 'right'), indock: pick(modern.indock, LOOK_VALUES.indock, 'below'),
+      layout: pick(modern.layout, LOOK_VALUES.layout, legacyList ? 'list' : 'dock'),
       apps: pick(modern.apps, LOOK_VALUES.apps, legacyList ? 'text' : 'both'), controls: pick(modern.controls, LOOK_VALUES.controls, 'both'),
       focus: pick(modern.focus, LOOK_VALUES.focus, legacyList ? 'type' : 'glass'), material: pick(modern.material, LOOK_VALUES.material, 'soft'),
       font: pick(modern.font, LOOK_VALUES.font, 'manrope'), wall: wall(modern.wall || s.wallpaper) ? modern.wall || s.wallpaper : WALLS[0].id,
@@ -547,7 +551,7 @@
     busy = true; busyTimer = setTimeout(release, 10000);
     run(function (err) {
       release();
-      if (err) message(title, err.message || T('The TV could not open this screen.'), err.detail || '');
+      if (err && !err.cancelled) message(title, err.message || T('The TV could not open this screen.'), err.detail || '');
       render(); syncRotation();
     });
   }
@@ -745,7 +749,7 @@
 
   /* ---------- Navigation targets ---------- */
   // This TV has no Art Mode app, so the first control opens Samsung's TV settings.
-  function utils() { return ['home', 'tv', 'apps', 'settings']; }
+  function utils() { return ['home', 'tv', 'apps', 'channels', 'settings']; }
   /* prev/next run along the apps; out goes to the controls, inn comes back (or to a per-app action). */
   function axes() {
     var v = S.c.layout === 'list';
@@ -756,18 +760,18 @@
     else if (u === 'tv') perform('TV settings', FrameDevice.settings);
     else if (u === 'art') perform('Art Mode', FrameDevice.art);
     else if (u === 'apps') openApps();
+    else if (u === 'channels') openChannels();
     else openSettings();
   }
   function addAppsRoute() { openEditor('home'); }
   function openSettings() { push({ id: 'settings', f: { id: S.settingsFocus } }); }
   function openAppearance(group) {
-    var axis = { background: 'bg', layout: 'layout', typography: 'font', focus: 'focus', weather: 'wfx', sort: 'sort' }[group];
+    var axis = { background: 'bg', docklayout: 'chdock', layout: 'layout', typography: 'font', focus: 'focus', weather: 'wfx', sort: 'sort' }[group];
     var action = S.detailFocus[group] || (axis ? 'choice.' + axis + '.' + S.c[axis] : group === 'rotation' ? 'rotation.' + S.c.mode : 'samsung.home');
     push({ id: 'appearance', group: group, f: { action: action } });
   }
-  function openMessage(key) { push({ id: 'message', msg: key, f: { b: 0 } }); }
-  function openApps() {
-    var e = { id: 'apps', mode: 'browse', top: 0, f: { zone: 'grid', i: Math.max(0, ALPHA.indexOf(S.appsFocus)), h: 0 } };
+  function openApps(edit) {
+    var e = { id: 'apps', mode: edit ? 'edit' : 'browse', top: 0, f: { zone: 'grid', i: Math.max(0, ALPHA.indexOf(S.appsFocus)), h: 0 } };
     push(e); refreshCatalog(); return e;
   }
   function openEditor(origin) {
@@ -790,6 +794,7 @@
   V.home = {
     key: function (t, k) {
       var f = t.f, h = S.c.home, U = utils(), x = axes(), i = ensureSel();
+      var chLeft = S.c.chdock === 'left', inAbove = S.c.indock === 'above';
       if (S.c.layout === 'list') { listHomeKey(t, k, i, U); return; }
       if (f.zone === 'util') {
         f.u = clamp(f.u, 0, U.length - 1);
@@ -808,7 +813,7 @@
         f.c = clamp(f.c || 0, 0, cn - 1);
         if (k === 'up') { if (f.c > 0) f.c--; else { f.zone = 'util'; f.uf = 'channels'; f.u = clamp(S.lastUtil, 0, U.length - 1); } }
         else if (k === 'down') { if (f.c < cn - 1) f.c++; }
-        else if (k === 'left' || k === 'back') f.zone = 'apps';
+        else if (k === 'back' || k === (chLeft ? 'right' : 'left')) f.zone = 'apps';
         else if (k === 'ok') { if (col[f.c].kind === 'all') openChannels(); else tuneChannel(col[f.c]); }
         return;
       }
@@ -819,24 +824,28 @@
         f.n = clamp(f.n || 0, 0, m - 1);
         if (k === 'left' && f.n > 0) f.n--;
         else if (k === 'right' && f.n < m - 1) f.n++;
-        else if (k === 'up' || k === 'back') f.zone = 'apps';
         else if (k === 'ok') switchInput(S.inputs[f.n]);
+        else if (k === 'back' || k === (inAbove ? 'down' : 'up')) f.zone = 'apps';
+        else if (inAbove && k === 'up') { f.zone = 'util'; f.u = clamp(S.lastUtil, 0, U.length - 1); }
         return;
       }
       f.zone = 'apps';
       var cols = dockGeom(h.length).cols, col = i % cols;
       function toInputs() { if (S.inputs.length) { f.zone = 'inputs'; f.n = clamp(f.n || 0, 0, S.inputs.length - 1); } }
       function toChannels() { f.zone = 'channels'; f.c = clamp(f.c || 0, 0, colItems().length - 1); }
-      if (k === 'back') openMessage('leave');
-      else if (!h.length) { if (k === 'up') { f.zone = 'util'; f.u = clamp(S.lastUtil, 0, U.length - 1); } else if (k === 'down') toInputs(); else if (k === 'right') toChannels(); else if (k === 'ok') addAppsRoute(); }
-      // Grid: Up/Down move between rows; Up from the first row reaches the controls,
-      // Down from the last row reaches the inputs dock.
-      else if (k === 'up') { if (i >= cols) setSel(h[i - cols]); else { f.zone = 'util'; f.u = clamp(S.lastUtil, 0, U.length - 1); } }
-      else if (k === 'down') { if (Math.floor(i / cols) < Math.floor((h.length - 1) / cols)) setSel(h[Math.min(i + cols, h.length - 1)]); else toInputs(); }
-      else if (k === 'left' && col > 0) setSel(h[i - 1]);
-      else if (k === 'right' && col < cols - 1 && i < h.length - 1) setSel(h[i + 1]);
-      // Right from the last app of a row reaches the channel column.
-      else if (k === 'right') toChannels();
+      if (k === 'back') FrameDevice.hide();
+      else if (!h.length) {
+        if (k === 'up') { if (inAbove) toInputs(); else { f.zone = 'util'; f.u = clamp(S.lastUtil, 0, U.length - 1); } }
+        else if (k === 'down') { if (!inAbove) toInputs(); }
+        else if (k === (chLeft ? 'left' : 'right')) toChannels();
+        else if (k === 'ok') addAppsRoute();
+      }
+      // Grid: Up/Down move between rows; the edge rows reach the controls, inputs and
+      // channel column on the sides chosen in Dock layout.
+      else if (k === 'up') { if (i >= cols) setSel(h[i - cols]); else if (inAbove) toInputs(); else { f.zone = 'util'; f.u = clamp(S.lastUtil, 0, U.length - 1); } }
+      else if (k === 'down') { if (Math.floor(i / cols) < Math.floor((h.length - 1) / cols)) setSel(h[Math.min(i + cols, h.length - 1)]); else if (!inAbove) toInputs(); }
+      else if (k === 'left') { if (col > 0) setSel(h[i - 1]); else if (chLeft) toChannels(); }
+      else if (k === 'right') { if (col < cols - 1 && i < h.length - 1) setSel(h[i + 1]); else if (!chLeft) toChannels(); }
       else if (k === 'ok') launch(S.sel);
     },
     point: function (t, z, i) {
@@ -864,7 +873,7 @@
     if (k === 'up' && i > 0) setSel(h[i - 1]);
     else if (k === 'right') { f.zone = 'util'; f.u = clamp(S.lastUtil, 0, U.length - 1); }
     else if (k === 'down' && i < h.length - 1) setSel(h[i + 1]);
-    else if (k === 'back') openMessage('leave');
+    else if (k === 'back') FrameDevice.hide();
     else if (k === 'ok') { if (h.length) launch(S.sel); else addAppsRoute(); }
   }
 
@@ -971,7 +980,20 @@
 
   /* ---------- Installed apps ---------- */
   function appsItems() { return catalog.error ? [] : ALPHA; }
-  function appsHead() { return catalog.error ? [['retry', T('Try again'), '', '']] : [['editor', T('Apps on Home'), '', 'home']]; }
+  function appsHead(t) {
+    if (catalog.error) return [['retry', T('Try again'), '', '']];
+    return t.mode === 'edit' ? [['done', T('Done'), '', 'check']] : [['edit', T('Edit Home apps'), '', 'plus']];
+  }
+  function toggleHome(id) {
+    if (!app(id)) return;
+    var home = S.c.home.slice(), i = home.indexOf(id), c;
+    if (i >= 0) { if (home.length <= 1) { S.note = LAST; return; } home.splice(i, 1); }
+    else if (home.length >= CAP) { S.note = FULL; return; }
+    else home.push(id);
+    c = next(home, S.c.recent.slice());
+    if (home.indexOf(c.lastApp) < 0) c.lastApp = home[0] || null;
+    S.note = write(c, i >= 0 ? 'Remove app' : 'Add app') ? (i >= 0 ? T('{name} removed from Home.', { name: app(id).name }) : T('{name} added to Home.', { name: app(id).name })) : null;
+  }
   V.apps = {
     sheet: true,
     norm: function (t) {
@@ -981,39 +1003,46 @@
     },
     key: function (t, k) {
       var f = t.f, items = appsItems(), n = items.length, col = f.i % COLS, row = Math.floor(f.i / COLS);
-      if (k === 'back') { pop(); return; }
+      S.note = null;
+      if (k === 'back') { if (t.mode === 'edit') t.mode = 'browse'; else pop(); return; }
       if (f.zone === 'head') {
         if (k === 'down' && n) f.zone = 'grid';
-        else if (k === 'ok') { if (catalog.error) refreshCatalog(); else openEditor('apps'); }
+        else if (k === 'ok') { if (catalog.error) refreshCatalog(); else t.mode = t.mode === 'edit' ? 'browse' : 'edit'; }
         return;
       }
       if (k === 'left' && col > 0) f.i--;
       else if (k === 'right' && col < COLS - 1 && f.i < n - 1) f.i++;
       else if (k === 'down' && row < Math.ceil(n / COLS) - 1) f.i = Math.min(f.i + COLS, n - 1);
       else if (k === 'up') { if (row > 0) f.i -= COLS; else f.zone = 'head'; }
-      else if (k === 'ok' && n) launch(items[f.i]);
+      else if (k === 'ok' && n) { if (t.mode === 'edit') toggleHome(items[f.i]); else launch(items[f.i]); }
       S.appsFocus = items[f.i] || null;
     },
     point: function (t, z, i) { if (z === 'grid') { t.f.zone = 'grid'; t.f.i = i; } else if (z === 'head') t.f.zone = 'head'; else return; this.key(t, 'ok'); }
   };
 
   /* ---------- All channels (from the TV's last channel scan) ---------- */
-  function openChannels() {
-    var t = push({ id: 'channels', mode: 'browse', top: 0, list: [], loading: true, error: null, f: { zone: 'grid', i: 0 } });
+  function openChannels(edit) {
+    var t = push({ id: 'channels', mode: edit ? 'edit' : 'browse', top: 0, list: [], loading: true, error: null, f: { zone: 'grid', i: 0 } });
     loadChannels(t);
   }
   function loadChannels(t) {
     t.loading = true; t.error = null;
     FrameDevice.channels(function (err, list) {
       t.loading = false;
-      if (err) t.error = err.message || T('The TV could not open this screen.');
-      else {
-        t.list = cleanChannels(list.map(function (c) {
-          var saved = savedChannel(c);
-          return saved ? stripChannel(saved) : { major: c.major, minor: c.minor, name: c.name };
-        }));
-      }
-      if (top() === t && !t.list.length) t.f.zone = 'head';
+      var scanned = (!err && Array.isArray(list)) ? list.map(function (c) {
+        var saved = savedChannel(c);
+        return saved ? stripChannel(saved) : { major: c.major, minor: c.minor, name: c.name };
+      }) : [];
+      // Always include the curated seed channels and saved channels the scan omits (e.g.
+      // analog/VCR), so they stay listable and can be added to or removed from the column.
+      (window.CleanTVChannels || []).concat(S.c.channels || []).forEach(function (s) {
+        if (!scanned.some(function (x) { return sameChannel(x, s); })) scanned.push(stripChannel(s));
+      });
+      scanned.sort(function (a, b) { return (a.major || 0) - (b.major || 0) || (a.minor || 0) - (b.minor || 0); });
+      t.list = cleanChannels(scanned);
+      t.error = (err && !t.list.length) ? (err.message || T('The TV could not open this screen.')) : null;
+      // Focus the first channel once the list arrives (it starts empty while loading).
+      if (top() === t) t.f.zone = t.list.length ? 'grid' : 'head';
       render();
     });
   }
@@ -1028,7 +1057,7 @@
   }
   function channelsHead(t) {
     if (t.error) return [['retry', T('Try again'), '', '']];
-    return t.mode === 'edit' ? [['done', T('Done'), '', 'check']] : [['edit', T('Edit saved channels'), '', 'plus']];
+    return t.mode === 'edit' ? [['done', T('Done'), '', 'check']] : [['edit', T('Edit Home channels'), '', 'plus']];
   }
   V.channels = {
     sheet: true,
@@ -1162,11 +1191,10 @@
   function mode() { for (var i = 0; i < MODES.length; i++) if (MODES[i].id === S.c.mode) return MODES[i]; return MODES[0]; }
   function settingsRows() {
     var n = S.c.home.length;
-    return [{ id: 'background', label: T('Background'), value: S.c.bg === 'photo' ? T(wall(S.c.wall).name) : VALUE_NAMES[S.c.bg] },
-      { id: 'layout', label: T('Layout'), value: VALUE_NAMES[S.c.layout] },
-      { id: 'typography', label: T('Typography'), value: FONTS[S.c.font].name },
-      { id: 'focus', label: T('Focus'), value: VALUE_NAMES[S.c.focus] + (materialApplies() ? ', ' + VALUE_NAMES[S.c.material] : '') },
-      { id: 'weather', label: T('Weather effects'), value: VALUE_NAMES[S.c.wfx] },      { id: 'editor', label: T('Apps on Home'), value: n + (n === 1 ? ' app' : ' apps') },
+    return [{ id: 'background', label: T('Background'), value: VALUE_NAMES[S.c.bg] + ' · ' + S.c.opacity + '%' },
+      { id: 'docklayout', label: T('Dock layout'), value: VALUE_NAMES[S.c.chdock] + ' · ' + VALUE_NAMES[S.c.indock] },
+      { id: 'weather', label: T('Weather effects'), value: VALUE_NAMES[S.c.wfx] }, { id: 'editor', label: T('Apps on Home'), value: n + (n === 1 ? ' app' : ' apps') },
+      { id: 'chanedit', label: T('Channels on Home'), value: T('{n} channels', { n: (S.c.channels || []).length }) },
       { id: 'sort', label: T('Sort apps'), value: VALUE_NAMES[S.c.sort] }]
       .concat(inputSources().length ? [{ id: 'inputedit', label: T('Input icons'), value: (function () { var ni = Object.keys(S.c.inputs || {}).length; return ni ? String(ni) : T('Default'); }()) }] : [])
       .concat([{ id: 'samsung', label: T('Samsung'), value: T('Home and TV settings') }]);
@@ -1186,11 +1214,12 @@
     point: function (t, z, i, id) { if (z === 'row' && id) { t.f.id = id; this.key(t, 'ok'); } }
   };
   function settingsOk(id) {
-    if (id === 'editor') openEditor('settings');
+    if (id === 'editor') openApps(true);
+    else if (id === 'chanedit') openChannels(true);
     else if (id === 'inputedit') openInputEditor();
     else openAppearance(id);
   }
-  var DETAIL_NAMES = { background: T('Background'), layout: T('Layout'), typography: T('Typography'), focus: T('Focus'), rotation: T('Rotation'), weather: T('Weather effects'), sort: T('Sort apps'), inputedit: T('Input icons'), samsung: T('Samsung'), inputs: T('Inputs') };
+  var DETAIL_NAMES = { background: T('Background'), docklayout: T('Dock layout'), layout: T('Layout'), typography: T('Typography'), focus: T('Focus'), rotation: T('Rotation'), weather: T('Weather effects'), sort: T('Sort apps'), inputedit: T('Input icons'), samsung: T('Samsung'), inputs: T('Inputs') };
   function backName(group) {
     return group === 'rotation' ? T('Background') : group === 'inputs' ? T('Samsung') : group === 'inputpick' ? T('Input icons') : T('Settings');
   }
@@ -1218,7 +1247,7 @@
   }
   function choice(axis, value, disabled) {
     return { action: axis === 'mode' ? 'rotation.' + value : 'choice.' + axis + '.' + value, axis: axis, value: value, disabled: !!disabled,
-      label: axis === 'font' ? FONTS[value].name : axis === 'mode' ? MODES.filter(function (m) { return m.id === value; })[0].name : value === 'both' ? T('Both') : VALUE_NAMES[value] };
+      label: axis === 'opacity' ? value + '%' : axis === 'font' ? FONTS[value].name : axis === 'mode' ? MODES.filter(function (m) { return m.id === value; })[0].name : value === 'both' ? T('Both') : VALUE_NAMES[value] };
   }
   function detailSections(t) {
     var flat = S.c.bg !== 'photo', inactive = !materialApplies();
@@ -1227,10 +1256,14 @@
       return { action: 'input.' + input.number, label: input.name, description: input.active ? T('Active') : input.connected ? T('Connected') : T('Disconnected — may be asleep') };
     }) : [{ action: 'inputs.retry', label: t.loading ? T('Loading inputs…') : T('Try again'), disabled: t.loading }],
       reason: t.inputError || (!t.loading && !t.inputs.length ? T('No HDMI inputs were reported by this TV.') : '') }];
+    if (t.group === 'docklayout') return [
+      { id: 'chdock', title: T('Channel dock'), horizontal: true, items: options('chdock', ['left', 'right']) },
+      { id: 'indock', title: T('Inputs'), horizontal: true, items: options('indock', ['above', 'below']) }
+    ];
     if (t.group === 'background') return [
-      { id: 'bg', title: T('Background type'), items: options('bg', ['photo', 'light', 'dark']) },
-      { id: 'wall', title: T('Wallpaper'), items: [{ action: 'background.wallpaper', label: T(wall(S.c.wall).name), thumbnail: true, disabled: flat }] },
-      { id: 'rotation', title: T('Rotation'), items: [{ action: 'background.rotation', label: mode().name, disabled: flat }], reason: flat ? T('Choose Photo to use wallpaper and rotation.') : '' }
+      { id: 'bg', title: T('Panel colour'), horizontal: true, items: options('bg', ['dark', 'light']) },
+      { id: 'opacity', title: T('Panel opacity'), horizontal: true, items: options('opacity', LOOK_VALUES.opacity),
+        reason: T('Lower is more see-through over live content; higher makes the panels easier to read.') }
     ];
     if (t.group === 'weather') return [{ id: 'wfx', title: '', horizontal: true, items: options('wfx', ['on', 'off']),
       reason: REDUCED_MOTION ? T('Animated effects follow the reduced-motion setting.') : T('Rain, storms, sun, stars and falling leaves follow the local weather.') }];
@@ -1445,6 +1478,8 @@
     else stage.style.removeProperty('--clock-ink');
     if (!adaptive && shown.dockClockInk) stage.style.setProperty('--dock-clock-ink', shown.dockClockInk);
     else stage.style.removeProperty('--dock-clock-ink');
+    // Overlay panel fill: chosen colour (dark/light) at the chosen opacity.
+    stage.style.setProperty('--ov', 'rgba(' + (S.c.bg === 'light' ? '242,242,238' : '6,10,14') + ',' + (Number(S.c.opacity) / 100) + ')');
     applyHomeFont();
     if (!sheet) renderHome(t);
     renderSheet(t, sheet);
@@ -1576,11 +1611,18 @@
   function dockGeom(n) {
     var m = DOCK_MODES[S.c.apps], cols = Math.max(1, Math.min(DOCK_COLS, n)), total = Math.max(1, Math.ceil(Math.max(n, 1) / cols));
     var rows = Math.min(DOCK_ROWS, total), rp = m.th + DOCK_ROW_GAP, shelfW = cols * m.pitch - 8, w = shelfW + 32, h = rows * rp - DOCK_ROW_GAP + 32;
-    var bottom = 908 - (S.inputs.length ? IN_H + IN_GAP : 0);
     if (n < 0) { w = 912; shelfW = 880; rows = total = 1; h = m.th + 32; }
-    // The channel column sits to the right; the pair is centred together.
-    var side = CH_GAP + CH_W;
-    return { x: Math.round((1920 - w - side) / 2), y: bottom - h, h: h, w: w, shelf: shelfW, cols: cols, rows: rows, total: total, rp: rp, vis: cols, broad: false, empty: n < 0, tw: m.tw, th: m.th, pitch: m.pitch };
+    // The app dock and channel column form a horizontal pair; appdock aligns it, chdock
+    // picks the channel's side, indock puts the inputs bar above or below the pair.
+    var hasIn = S.inputs.length > 0, M = 40, chLeft = S.c.chdock === 'left';
+    // Channel column pinned to a side; the app dock centres in the remaining width.
+    var chx = chLeft ? M : 1920 - M - CH_W;
+    var regL = chLeft ? M + CH_W + CH_GAP : M, regR = chLeft ? 1920 - M : 1920 - M - CH_W - CH_GAP;
+    var x = clamp(Math.round(regL + (regR - regL - w) / 2), M, Math.max(M, 1920 - M - w));
+    var above = S.c.indock === 'above' && hasIn;
+    var pairBottom = (hasIn && !above) ? 908 - IN_H - IN_GAP : 908;
+    var iny = above ? (pairBottom - h) - IN_GAP - IN_H : 908 - IN_H;
+    return { x: x, y: pairBottom - h, chx: chx, iny: iny, h: h, w: w, shelf: shelfW, cols: cols, rows: rows, total: total, rp: rp, vis: cols, broad: false, empty: n < 0, tw: m.tw, th: m.th, pitch: m.pitch };
   }
   /* Returns the vertical offset: the window moves one row when focus passes an edge. */
   function dockOffset(n, i, g) {
@@ -1599,7 +1641,7 @@
   }
 
   /* Horizontal inputs dock: same glass material as the app grid, registered to the stage. */
-  function renderInputs(hs) {
+  function renderInputs(hs, g) {
     var list = S.inputs, n = list.length, w, x, y, focus = hs.zone === 'inputs', at = clamp(hs.n || 0, 0, Math.max(0, n - 1));
     var room = IN_MAXW - 32 + 8, pitch = IN_PITCH, tw = IN_TW, vis = n, first = 0;
     if (!n || hs.mode === 'arrange') { inDock.className = 'dock inputs-dock is-off'; return; }
@@ -1612,7 +1654,7 @@
       if (at > first + vis - 1) first = at - vis + 1;
     }
     scroll.inp = first;
-    w = vis * pitch - 8 + 32; x = Math.round((1920 - w) / 2); y = 908 - IN_H;
+    w = vis * pitch - 8 + 32; x = Math.round((1920 - w) / 2); y = g ? g.iny : 908 - IN_H;
     inDock.className = 'dock inputs-dock';
     inDock.style.left = x + 'px'; inDock.style.top = y + 'px'; inDock.style.width = w + 'px'; inDock.style.height = IN_H + 'px';
     inShelf.style.width = (vis * pitch - 8) + 'px';
@@ -1639,7 +1681,7 @@
   function renderChannels(hs, g) {
     var items = colItems(), n = items.length, focus = hs.zone === 'channels', at = clamp(hs.c || 0, 0, Math.max(0, n - 1));
     var x, y, h, vis, first;
-    x = g.x + g.w + CH_GAP; y = g.y; h = g.h;
+    x = g.chx; y = g.y; h = g.h;
     vis = Math.max(1, Math.floor((h - 32 + 8) / CH_PITCH));
     first = clamp(scroll.ch, 0, Math.max(0, n - vis));
     if (at < first) first = at;
@@ -1677,7 +1719,7 @@
     // focus reads in one place only. Arrange/settings-preview keep their selection.
     var tileFocus = hs.zone === 'apps' || hs.zone === 'tiles', tileSel = hs.zone === 'act' || hs.zone === 'ctl' || hs.zone === 'preview';
     var focusItem = items[anchor], s, ax, label, width;
-    renderInputs(hs);
+    renderInputs(hs, g);
     renderChannels(hs, g);
 
     dock.className = 'dock' + (empty ? ' is-empty' : '');
@@ -2008,16 +2050,16 @@
       return '<h2 class="msg-title">' + esc(m.title) + '</h2><p class="msg-line">' + esc(m.line) + '</p><p class="msg-note">' + esc(m.note) + '</p><div class="msg-acts" data-slot="acts"></div>';
     }
   };
-  function gridTileHtml(id) {
-    var a = app(id), state = onHome(id) ? badge(true) + '<span>' + T('On Home') + '</span>' : '';
-    return '<span class="panel-content">' + appMark(a, 120, 72, 58) + '<span class="label">' + esc(a.name) + '</span></span><span class="state">' + state + '</span>';
+  function gridTileHtml(id, edit) {
+    var a = app(id);
+    return '<span class="panel-content">' + appMark(a, 120, 72, 58) + '<span class="label">' + esc(a.name) + '</span></span>'
+      + (edit ? '<span class="state">' + badge(onHome(id)) + '</span>' : '');
   }
   FRAMES.channels = FRAMES.apps;
   function channelTileHtml(ch, edit) {
-    var saved = !!savedChannel(ch);
-    var state = edit ? badge(saved) + '<span>' + (saved ? T('Saved') : T('Save')) + '</span>' : saved ? badge(true) + '<span>' + T('Saved') + '</span>' : '';
     return '<span class="panel-content">' + (ch.icon ? markHtml(ch.icon, 120, 72, 58) : '<span class="ch-big">' + esc(ch.num) + '</span>')
-      + '<span class="label">' + (ch.icon ? '<span class="ch-num">' + esc(ch.num) + '</span> ' : '') + esc(ch.name) + '</span></span><span class="state">' + state + '</span>';
+      + '<span class="label">' + (ch.icon ? '<span class="ch-num">' + esc(ch.num) + '</span> ' : '') + esc(ch.name) + '</span></span>'
+      + (edit ? '<span class="state">' + badge(!!savedChannel(ch)) + '</span>' : '');
   }
   var FILLS = {
     channels: function (t, el) {
@@ -2044,20 +2086,21 @@
       el.after.className = 'row-cue grid-after' + (rows - t.top > vis ? ' is-on' : '');
     },
     apps: function (t, el) {
-      var f = t.f, items = appsItems(), n = items.length, rows = Math.ceil(n / COLS), vis = 3, row = Math.floor(f.i / COLS);
+      var f = t.f, items = appsItems(), n = items.length, rows = Math.ceil(n / COLS), vis = 3, row = Math.floor(f.i / COLS), edit = t.mode === 'edit';
+      var sub = catalog.loading ? T('Loading installed apps…') : catalog.error ? catalog.error : !n ? T('No installed apps found.') : S.note || (edit ? T('OK adds or removes the app from Home.') : T('{n} apps', { n: n }));
       setHTML(el.title, T('All apps'));
-      setHTML(el.sub, esc(catalog.loading ? T('Loading installed apps…') : catalog.error || (!n ? T('No installed apps found.') : '')));
-      setHTML(el.head, headButtons(appsHead(), f.zone === 'head' ? 0 : -1, 'apps'));
+      setHTML(el.sub, esc(sub));
+      setHTML(el.head, headButtons(appsHead(t), f.zone === 'head' ? 0 : -1, 'apps'));
       el.head.className = 's-head' + (f.zone === 'head' ? ' is-awake' : '');
       if (f.zone === 'grid') { if (row < t.top) t.top = row; if (row > t.top + vis - 1) t.top = row - vis + 1; }
       t.top = clamp(t.top, 0, Math.max(0, rows - vis));
       keyed(el.grid, items.map(function (id) { return { key: id, id: id }; }), function (tile, it, i) {
         var focus = f.zone === 'grid' && i === f.i;
-        setContent(tile, [it.id, app(it.id).name, onHome(it.id)].join('|'), function () { return gridTileHtml(it.id); });
+        setContent(tile, [it.id, app(it.id).name, edit, onHome(it.id)].join('|'), function () { return gridTileHtml(it.id, edit); });
         tile.className = 'gt' + (focus ? ' is-focus' : '');
         tile.style.transform = 'translate3d(' + ((i % COLS) * GRID_COL) + 'px,' + (Math.floor(i / COLS) * GRID_ROW) + 'px,0)';
         tile.setAttribute('role', 'button'); tile.setAttribute('aria-label', app(it.id).name);
-        attrs(tile, 'grid', i, 'apps.open.' + it.id);
+        attrs(tile, 'grid', i, 'apps.' + (edit ? 'toggle.' : 'open.') + it.id);
       });
       el.grid.style.transform = 'translate3d(0,' + (-t.top * GRID_ROW) + 'px,0)';
       el.view.className = 'grid-view' + (t.top > 0 ? ' more-before' : '') + (rows - t.top > vis ? ' more-after' : '');
