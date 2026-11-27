@@ -71,6 +71,36 @@ db/appfw/overlay_home_appid   stock com.samsung.tv.csfs
 permitted". That key is the cold-boot first screen, so **a cold boot still opens the TV viewer**;
 a public web-app launcher can own the Home key and warm wake, but not the cold-boot screen.
 
+## Returning to Samsung Home after Controls / app exit (investigated 2026-11-27, not solved)
+
+Separate from the physical Home key: closing the Samsung settings menu (CleanTV's "Controls"
+→ `org.tizen.menu`) or exiting an app drops to **Samsung Home (`com.samsung.tv.csfs`)**, not
+the launcher. Measured with a read-only foreground sampler (`aul_test getallappstatus`, status
+2=focus 3=visible 4=bg 8=service): after the menu is dismissed, `csfs` goes to VISIBLE for ~8 s,
+then the launcher returns. What was tried, and did **not** change it:
+
+- **`db/appfw/overlay_home_appid` → launcher** (vconf): no effect on this transition; reverted.
+- **`task_filter` rule on `org.tizen.menu`** (`pause`, `deactivate` and `stop` all present),
+  `request=launch` → `package:<launcher>`: no effect, **including after a full wall power-cycle**.
+  The rule never fired (no launcher flash), so the menu's exit to Samsung Home is a hardcoded
+  route in the menu/exit path, not a framework fallback that `task_filter` can intercept. This
+  matches couchroot's QN90A note that Samsung Home is hardcoded in the Exit route.
+- **`task_filter` live reload does not work on this firmware**: setting
+  `memory/appfw/app_context_db_change` (Int32) does not make the context manager re-read the
+  rules; only a **boot** reloads them (same as `key_filter`). Plan tests around a power-cycle.
+
+Transport notes for a future attempt: rules were edited in place with on-TV `sqlite3` as UID 901
+(not whole-DB replacement), so the `XF86Home` row and SMACK label are untouched; the SDK-user
+injection route **truncates long commands**, so each `INSERT`/`DELETE` must be a short, separate
+call, and it runs each one **twice** (duplicate rows — harmless, `DELETE FROM task_filter` clears).
+
+**Not yet tried (Option A):** a `task_filter` rule on `com.samsung.tv.csfs` itself (e.g.
+`activate`) → launch the launcher, to catch Samsung Home whenever it comes forward. Caveats: it
+would also redirect the launcher's own "open Samsung Home" control (breaking that escape), may
+affect boot/warm-wake, may only yield a brief Samsung flash before the launcher, and each test
+needs a power-cycle. The app-side alternative (a launcher-native controls panel so "Controls"
+never launches `org.tizen.menu`) avoids the firmware entirely for the common case.
+
 ## What does NOT move the physical Home button (recorded to save repetition)
 
 Setting any or all of the main app-control Home operation (`app_operation_set_current_app`),
